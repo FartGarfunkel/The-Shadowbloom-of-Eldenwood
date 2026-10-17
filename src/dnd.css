@@ -1,0 +1,166 @@
+/* ---------- The Shadowbloom of Eldenwood: tabletop layer ---------- */
+:root { --sb-bloom: #b07aff; --sb-bloom-deep: #5a2a9a; --sb-leaf: #7ac05a; --sb-parch: #e8dcc0; --sb-ink: #2a1e14; }
+
+/* dice */
+.dnd-roll { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 22px 12px; background: rgba(20, 14, 10, 0.88); border: 2px solid var(--line-hi); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.6); z-index: 40; pointer-events: none; min-width: 210px; transition: opacity .3s, transform .3s; animation: dndPop .25s ease-out; }
+.dnd-roll.gone { opacity: 0; transform: translate(-50%, -60%); }
+@keyframes dndPop { from { transform: translate(-50%, -40%) scale(.8); opacity: 0; } }
+.dnd-roll-label { font-family: var(--font-display); font-size: 24px; letter-spacing: .04em; color: var(--gold); text-shadow: 0 2px 0 #000; }
+.dnd-die { position: relative; width: 84px; height: 84px; transition: transform .08s; }
+.dnd-die svg { width: 100%; height: 100%; }
+.dnd-die .d20-out { fill: #3a2a5a; stroke: #c8a8ff; stroke-width: 3; }
+.dnd-die .d20-in { fill: #4a3a72; stroke: #c8a8ff; stroke-width: 2; }
+.dnd-die line { stroke: #c8a8ff; stroke-width: 2; }
+.dnd-die-n { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 14px; font-family: var(--font-display); font-size: 30px; color: #fff; text-shadow: 0 2px 0 #000; }
+.dnd-roll.crit .d20-out { fill: #6a5010; stroke: #ffe060; } .dnd-roll.crit .dnd-die-n { color: #ffe060; }
+.dnd-roll.fumble .d20-out { fill: #4a1010; stroke: #ff6050; } .dnd-roll.fumble .dnd-die-n { color: #ff8070; }
+.dnd-roll-sum { font-size: 15px; color: var(--text); text-align: center; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.dnd-roll-sum b { color: #fff; font-size: 17px; }
+.dnd-two { color: var(--muted); font-size: 13px; width: 100%; }
+.dnd-dc { color: var(--muted); }
+.dnd-roll-out { font-family: var(--font-display); font-size: 22px; min-height: 22px; }
+.dnd-roll-out.good { color: var(--xp); } .dnd-roll-out.bad { color: var(--bad); }
+
+.dnd-float { position: absolute; top: 44%; transform: translateX(-50%); font-family: var(--font-display); font-size: 22px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; pointer-events: none; z-index: 30; white-space: nowrap; animation: dndRise 1.4s ease-out forwards; }
+.dnd-float.miss { color: #b8b8c0; font-size: 18px; }
+.dnd-float.crit { color: #ffe060; font-size: 28px; }
+.dnd-float.hurt { color: #ff7060; top: 56%; }
+.dnd-float.heal { color: #7aff8a; top: 56%; }
+.dnd-float.save { color: #8fe3ff; }
+.dnd-float.xp { color: var(--gold); top: 30%; font-size: 20px; }
+@keyframes dndRise { 0% { opacity: 0; transform: translate(-50%, 6px); } 12% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -46px); } }
+
+/* the D&D HUD: replaces hearts, armour and the XP bar */
+.view.dnd-on .stats, .view.dnd-on .xprow, .view.dnd-on .manarow, .view.dnd-on .mana-row { display: none !important; }
+.dnd-hud { width: calc(var(--slot-size) * 9 + 16px); display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.dh-top { display: flex; align-items: center; gap: 6px; }
+.dh-ac { position: relative; width: 34px; height: 38px; flex: none; display: grid; place-items: center; background: no-repeat center/100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 38'%3E%3Cpath d='M17 1 L32 6 V18 C32 28 24 34 17 37 C10 34 2 28 2 18 V6 Z' fill='%232a3a52' stroke='%23c8d8f0' stroke-width='2'/%3E%3C/svg%3E"); }
+.dh-ac b { font-family: var(--font-display); font-size: 20px; color: #fff; text-shadow: 0 2px 0 #000; line-height: 1; margin-top: -2px; }
+.dh-ac i { position: absolute; bottom: 3px; font-style: normal; font-size: 8px; color: #c8d8f0; letter-spacing: .1em; }
+.dh-hpwrap { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.dh-hp { position: relative; height: 18px; background: rgba(20, 6, 6, .8); border: 2px solid #000; border-radius: 3px; overflow: hidden; }
+.dh-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#ff6a5a, #b8221a); transition: width .2s; }
+.dh-temp { position: absolute; right: 0; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, rgba(160,200,255,.7) 0 4px, rgba(120,160,230,.7) 4px 8px); }
+.dh-hp.low .dh-fill { animation: dhPulse .8s ease-in-out infinite alternate; }
+.dh-hp.dying .dh-fill { background: #4a0a0a; }
+@keyframes dhPulse { to { filter: brightness(1.5); } }
+.dh-hpt { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 0 #000, 0 0 3px #000; white-space: nowrap; }
+.dh-xp { height: 5px; background: rgba(0,0,0,.6); border: 1px solid #000; border-radius: 2px; overflow: hidden; }
+.dh-xp i { display: block; height: 100%; background: linear-gradient(var(--gold), #a07a20); }
+.dh-lv { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 46px; }
+.dh-lv b { font-family: var(--font-display); font-size: 24px; color: var(--gold); text-shadow: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000; line-height: .9; }
+.dh-lv i { font-style: normal; font-size: 10px; color: #f0e4cc; text-shadow: 0 1px 0 #000; }
+.dh-res { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 0; }
+.dh-r, .dh-slot { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: rgba(10, 8, 6, .72); border: 1px solid rgba(255,255,255,.12); color: var(--text); white-space: nowrap; text-shadow: 0 1px 0 #000; }
+.dh-r kbd { font: inherit; font-weight: 700; color: var(--gold); margin-right: 4px; }
+.dh-r em { font-style: normal; color: var(--muted); }
+.dh-slot { color: #c8a8ff; letter-spacing: 1px; }
+.dh-conc { color: #8fe3ff; } .dh-insp { color: #ffe060; } .dh-rage { color: #ff7050; font-weight: 700; }
+.view[style*="width: 50%"] .dh-res, .view.small .dh-res { display: none; }
+
+/* the character sheet */
+.dnd-sheet .ds-card { width: min(980px, 96%); max-height: 94%; overflow-y: auto; }
+.ds-top { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; padding: 8px 12px; }
+.ds-big { text-align: center; background: var(--slot); border: 2px solid var(--line); border-radius: 4px; padding: 4px 2px; }
+.ds-big b { display: block; font-family: var(--font-display); font-size: 22px; color: #fff; line-height: 1; }
+.ds-big span { font-size: 10px; color: var(--muted); }
+.ds-cols { display: grid; grid-template-columns: 1.1fr 1fr 1.3fr; gap: 12px; padding: 0 12px 10px; }
+.ds-abs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.ds-ab { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; background: var(--slot); border: 2px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+.ds-ab span { font-size: 11px; color: var(--muted); } .ds-ab b { font-family: var(--font-display); font-size: 22px; text-align: right; } .ds-ab i { font-style: normal; font-size: 11px; } .ds-ab em { font-style: normal; font-size: 10px; color: var(--muted); text-align: right; } .ds-ab em.prof { color: var(--gold); }
+.ds-sks { display: grid; gap: 1px; }
+.ds-sk { display: flex; justify-content: space-between; font-size: 12px; padding: 1px 4px; color: var(--muted); }
+.ds-sk.prof { color: var(--text); } .ds-sk.exp b { color: var(--gold); } .ds-sk i { font-style: normal; font-size: 10px; opacity: .6; }
+.ds-feats, .ds-spells { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.4; max-height: 220px; overflow-y: auto; }
+.ds-feats li i { color: var(--muted); font-style: normal; }
+.ds-spells li { cursor: pointer; margin-bottom: 3px; } .ds-spells li.on b { color: var(--gold); } .ds-spells li div { color: var(--muted); font-size: 11px; } .ds-spells li i { color: var(--muted); font-style: normal; font-size: 11px; }
+.ds-weap { font-size: 12px; padding: 4px 6px; background: var(--slot); border-radius: 3px; margin-bottom: 6px; }
+.ds-rest { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* the creator */
+.dnd-creator { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 10px; background: rgba(8, 6, 4, .55); pointer-events: auto; }
+.screen .dnd-creator { position: relative; inset: auto; background: none; padding: 0; width: 100%; height: 100%; }
+.cr-card { width: min(1040px, 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--panel); border: 2px solid var(--line); border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,.55); overflow: hidden; }
+.cr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; background: var(--panel-2); border-bottom: 2px solid var(--line); }
+.cr-head > b { font-family: var(--font-display); font-size: 26px; color: var(--ember); font-weight: 400; letter-spacing: .03em; }
+.cr-tabs { display: flex; flex-wrap: wrap; gap: 3px; margin-left: auto; }
+.cr-tab { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 3px; border: 1px solid var(--line); background: var(--slot); color: var(--muted); cursor: pointer; }
+.cr-tab.on { background: var(--ember-deep); color: #fff; border-color: #ffb07a; }
+.cr-main { display: grid; grid-template-columns: minmax(0, 1fr) 210px; min-height: 0; flex: 1; }
+.cr-body { padding: 10px 12px; overflow-y: auto; min-height: 0; max-height: calc(100vh - 170px); }
+.cr-side { border-left: 2px solid var(--line); padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: radial-gradient(ellipse at 50% 30%, rgba(176,122,255,.12), transparent 70%); }
+.cr-doll { width: 150px; height: 250px; image-rendering: pixelated; }
+.cr-rot { display: flex; gap: 4px; }
+.cr-sum { width: 100%; text-align: center; font-size: 12px; }
+.cr-sum > b { display: block; font-family: var(--font-display); font-size: 22px; color: var(--gold); font-weight: 400; }
+.cr-sum > span { color: var(--muted); }
+.cr-stats { display: flex; justify-content: center; gap: 8px; margin: 4px 0; } .cr-stats b { color: #fff; }
+.cr-abs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.cr-abs span { display: flex; flex-direction: column; background: var(--slot); border-radius: 3px; padding: 1px; } .cr-abs i { font-style: normal; font-size: 9px; color: var(--muted); } .cr-abs b { font-size: 15px; } .cr-abs em { font-style: normal; font-size: 10px; color: var(--gold); }
+.cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.cr-pick { font: inherit; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 7px 9px; border: 2px solid var(--line); border-radius: 4px; background: linear-gradient(var(--slot-hi), var(--slot)); color: var(--text); cursor: pointer; border-left: 4px solid var(--cc, var(--line)); }
+.cr-pick b { font-size: 14px; } .cr-pick i { font-style: normal; font-size: 11px; color: var(--muted); }
+.cr-pick.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), inset 0 0 12px rgba(226,184,79,.25); }
+.cr-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 10px 0 6px; font-size: 13px; }
+.cr-sub > span { color: var(--muted); margin-right: 4px; }
+.btn.tiny.on { border-color: var(--gold); color: var(--gold); }
+.cr-desc { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 8px 0; }
+.cr-desc .bad, .cr-hint.bad { color: var(--bad); }
+.cr-traits { margin: 6px 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.cr-abs-list { display: flex; flex-direction: column; gap: 4px; }
+.cr-ab { display: grid; grid-template-columns: 110px auto 34px auto 1fr 70px; align-items: center; gap: 4px; background: var(--slot); border-radius: 4px; padding: 3px 6px; }
+.cr-score { font-family: var(--font-display); font-size: 22px; text-align: center; }
+.cr-plus { display: flex; gap: 2px; margin-left: 8px; } .cr-fin { text-align: right; font-weight: 700; } .cr-fin i { font-style: normal; color: var(--gold); font-weight: 400; }
+.cr-pts { font-style: normal; color: var(--gold); margin-left: 8px; }
+.cr-skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px; }
+.cr-skill { font: inherit; display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--slot); color: var(--muted); cursor: pointer; font-size: 13px; }
+.cr-skill.on { color: var(--text); border-color: var(--gold); } .cr-skill.fixed { opacity: .75; cursor: default; } .cr-skill[disabled]:not(.fixed) { opacity: .35; }
+.cr-skill i { font-style: normal; font-size: 10px; color: var(--muted); }
+.cr-looks { display: flex; flex-direction: column; gap: 3px; }
+.cr-row { display: grid; grid-template-columns: 110px auto 1fr auto; align-items: center; gap: 4px; }
+.cr-row.cr-sw { display: flex; flex-wrap: wrap; } .cr-row.cr-sw .cr-l { width: 110px; flex: none; }
+.cr-l { font-size: 13px; color: var(--muted); }
+.cr-v { text-align: center; font-size: 13px; padding: 3px 6px; background: var(--slot); border-radius: 3px; }
+.cr-swatch { width: 20px; height: 20px; border-radius: 3px; border: 2px solid rgba(0,0,0,.6); cursor: pointer; padding: 0; }
+.cr-swatch.on { border-color: #fff; box-shadow: 0 0 0 1px #000; }
+.cr-namebox { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cr-name { flex: 1; font: inherit; font-size: 18px; padding: 6px 10px; background: var(--slot); color: var(--text); border: 2px solid var(--line); border-radius: 4px; }
+.cr-foot { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 2px solid var(--line); background: var(--panel-2); }
+.cr-hint { flex: 1; text-align: center; font-size: 12px; color: var(--muted); }
+.dnd-creator .padfocus { outline: 3px solid var(--gold) !important; outline-offset: 1px; }
+.dnd-creator.compact .cr-main { grid-template-columns: minmax(0, 1fr) 120px; }
+.dnd-creator.compact .cr-doll { width: 90px; height: 150px; }
+.dnd-creator.compact .cr-abs, .dnd-creator.compact .cr-hint { display: none; }
+.dnd-creator.compact .cr-head > b { font-size: 18px; }
+.dnd-creator.compact .cr-tab { font-size: 10px; padding: 2px 4px; }
+.dnd-creator.compact .cr-ab { grid-template-columns: 70px auto 28px auto 1fr 50px; font-size: 11px; }
+.dnd-creator.compact .cr-row { grid-template-columns: 70px auto 1fr auto; }
+@media (max-width: 720px) { .cr-main { grid-template-columns: 1fr; } .cr-side { border-left: 0; border-top: 2px solid var(--line); flex-direction: row; flex-wrap: wrap; justify-content: center; } }
+
+/* narration */
+.camp-narr { position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: radial-gradient(ellipse at 50% 50%, rgba(20, 10, 30, .72), rgba(4, 2, 8, .94)); pointer-events: auto; animation: narrIn .8s ease-out; }
+@keyframes narrIn { from { opacity: 0; } }
+.camp-narr-card { width: min(720px, 96%); max-height: 92%; display: flex; flex-direction: column; background: linear-gradient(#efe2c2, #dccaa0); color: var(--sb-ink); border: 3px solid #6a4a2a; border-radius: 6px; box-shadow: 0 20px 60px rgba(0,0,0,.7), inset 0 0 40px rgba(120, 80, 30, .35); padding: 18px 26px; }
+.camp-narr-title { font-family: var(--font-display); font-size: 34px; color: #5a2a6a; text-align: center; letter-spacing: .03em; margin-bottom: 8px; }
+.camp-narr-text { overflow-y: auto; font-size: 17px; line-height: 1.6; font-family: Georgia, 'Times New Roman', serif; }
+.camp-narr-text p { margin: 0 0 12px; }
+.camp-narr-text.in { animation: narrText .9s ease-out; }
+@keyframes narrText { from { opacity: 0; transform: translateY(8px); } }
+.camp-narr-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.camp-narr-n { color: #6a4a2a; font-size: 13px; }
+
+/* the journal's tabs, people, letters */
+.camp-journal .jn-card { width: min(760px, 96%); }
+.jn-tabs { display: flex; gap: 4px; padding: 6px 12px 0; }
+.jn-body { padding: 8px 12px 12px; max-height: 60vh; overflow-y: auto; }
+.jn-past { font-size: 12px; color: var(--muted); margin-top: 4px; padding-left: 18px; }
+.jn-person { padding: 6px 4px; border-bottom: 1px solid var(--line); } .jn-person span { color: var(--muted); font-size: 12px; }
+.jn-letter { display: block; width: 100%; text-align: left; margin-bottom: 4px; }
+.jn-empty { color: var(--muted); }
+.qt-camp-box .qt.camp.main b { color: #d8b8ff; }
+.qt.camp span { white-space: normal; text-align: right; max-width: 60%; }
+.nt-check { color: var(--gold); font-weight: 700; }
+.pf-hero { font-size: 12px; text-align: center; min-height: 30px; } .pf-hero b { display: block; color: var(--gold); } .pf-hero span { color: var(--muted); }
+.hero-screen { display: grid; place-items: center; padding: 12px; background: rgba(8, 6, 4, .8); }
+.hero-screen .dnd-creator { position: relative; inset: auto; width: min(1060px, 100%); height: auto; max-height: 100%; padding: 0; background: none; }
+.hero-close { margin-left: 6px; }

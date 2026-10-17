@@ -1,0 +1,310 @@
+<title>The Shadowbloom of Eldenwood</title>
+<!-- Shadowbloom (formerly Emberwild): worlds, settings and the save format keep their old internal names -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+15&family=Pixelify+Sans:wght@400;500;600;700&display=swap">
+<style>/*STYLES*/</style>
+
+<div id="app">
+  <canvas id="gl" aria-label="Game view"></canvas>
+
+  <!-- one view per player on this device (split-screen); built from the template below -->
+  <div id="views"></div>
+  <div id="fx-fade" class="fx" hidden></div>
+
+  <template id="tpl-view">
+    <div class="view">
+      <div class="fx fx-water" hidden></div>
+      <div class="fx fx-lava" hidden></div>
+      <div class="fx fx-fire" hidden></div>
+      <div class="fx fx-portal" hidden></div>
+      <div class="fx fx-hurt"></div>
+      <div class="hud">
+        <div class="crosshair" aria-hidden="true"></div>
+        <div class="bossbar" hidden>
+          <div class="boss-name"><span>Cinder Golem</span><span class="elem fire">Fire</span></div>
+          <div class="boss-track"><div class="boss-fill"></div></div>
+        </div>
+        <div class="toasts" aria-live="polite"></div>
+        <div class="dimname" hidden></div>
+        <div class="debug" hidden></div>
+        <div class="floaters"></div>
+        <div class="tags"></div>
+        <div class="pname" hidden></div>
+        <div class="carry-hint" hidden></div>
+        <div class="tool-hud" hidden><span class="tool-dial"></span><span class="tool-text"></span></div>
+        <div class="spy-mask" hidden></div>
+        <div class="bottom">
+          <div class="held-name" hidden></div>
+          <div class="airrow" aria-label="Air" hidden></div>
+          <div class="stats"><div class="hearts" aria-label="Health"></div><div class="armorbar" aria-label="Armor"></div></div>
+          <div class="xprow"><div class="xpbar"><div class="xpfill"></div></div><span class="xplevel"></span></div>
+          <div class="hotrow"><div class="slot offslot" hidden title="Off hand (F to swap)"></div><div class="hotbar" role="toolbar" aria-label="Hotbar"></div></div>
+        </div>
+        <div class="savebadge" hidden>Saving…</div>
+        <div class="chat" hidden><div class="chat-log" aria-live="polite"></div><input class="chat-input" maxlength="256" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Chat or command" placeholder="Chat, or /command — /help for the list"></div>
+      </div>
+      <div class="touch" hidden>
+        <div class="touch-zone"></div>
+        <div class="joy-base" hidden><div class="joy-knob"></div></div>
+        <div class="tbtns-top">
+          <button class="tbtn small" data-t="mode" aria-label="Placement mode: vertical slabs, upside-down stairs">Mode</button>
+          <button class="tbtn small" data-t="inv" aria-label="Inventory">Bag</button>
+          <button class="tbtn small" data-t="chat" aria-label="Chat and commands">Chat</button>
+          <button class="tbtn small" data-t="pause" aria-label="Pause">II</button>
+        </div>
+        <div class="tbtns-right">
+          <button class="tbtn" data-t="use" aria-label="Use or place">Use</button>
+          <button class="tbtn big" data-t="mine" aria-label="Mine or attack">Mine</button>
+          <button class="tbtn small" data-t="sneak" aria-label="Sneak toggle">Sneak</button>
+          <button class="tbtn small" data-t="drop" aria-label="Drop item">Drop</button>
+          <button class="tbtn small" data-t="swap" aria-label="Swap hands">Swap</button>
+          <button class="tbtn big" data-t="jump" aria-label="Jump">Jump</button>
+        </div>
+      </div>
+      <div class="death" hidden>
+        <div class="death-box">
+          <h2>You died</h2>
+          <p class="death-cause"></p>
+          <p class="hint death-note"></p>
+          <button class="btn primary respawn">Respawn</button>
+        </div>
+      </div>
+      <div class="inv" hidden></div>
+    </div>
+  </template>
+
+  <!-- title -->
+  <section id="title" class="screen mc-menu">
+    <div class="title-wrap">
+      <div class="mc-logo-wrap">
+        <h1 class="sr-only">Shadowbloom</h1>
+        <canvas id="mc-logo" aria-hidden="true"></canvas>
+        <span class="mc-splash" id="mc-splash" aria-hidden="true"></span>
+      </div>
+      <div class="mc-buttons">
+        <button id="btn-lan-served" class="mcbtn lan-served" hidden></button>
+        <button id="btn-play" class="mcbtn">Singleplayer</button>
+        <button id="btn-lan" class="mcbtn">Multiplayer</button>
+        <button id="btn-players-t" class="mcbtn">Heroes</button>
+        <button id="btn-howto" class="mcbtn">How to Play</button>
+        <div class="mc-row" id="title-row">
+          <button id="btn-settings-t" class="mcbtn">Options...</button>
+          <button id="btn-quit-app" class="mcbtn" hidden>Quit Game</button>
+          <button id="btn-fullscreen" class="mcbtn" hidden>Full Screen</button>
+        </div>
+      </div>
+    </div>
+    <button class="version" id="version" type="button" title="What's new in this version"></button>
+    <p class="title-foot" id="store-status">Opening save storage…</p>
+  </section>
+
+  <!-- world list -->
+  <section id="worlds" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2>Worlds</h2><button class="btn ghost" data-close>Back</button></header>
+      <div class="worlds-body">
+        <div class="world-list" id="world-list"></div>
+        <form class="new-world" id="new-world" autocomplete="off">
+          <h3>New world</h3>
+          <label for="nw-name">Name</label>
+          <input id="nw-name" maxlength="32" value="New World">
+          <label for="nw-seed">Seed <small>(optional — words or numbers)</small></label>
+          <input id="nw-seed" maxlength="40" placeholder="Random">
+          <label for="nw-adv">Adventure</label>
+          <select id="nw-adv"><option value="shadowbloom">The Shadowbloom of Eldenwood — the campaign</option><option value="">Free play — tabletop rules, no story</option></select>
+          <label for="nw-mode">Game mode</label>
+          <select id="nw-mode"><option value="survival">Survival — gather, craft, stay alive</option><option value="creative">Creative — every block, flight, no damage</option></select>
+          <details class="more-opts"><summary>More world options: day and night, game rules, commands</summary><div id="nw-opts"></div></details>
+          <button class="btn primary" type="submit">Create world</button>
+          <div class="import-row">
+            <label class="btn" for="import-file">Import world file</label>
+            <input type="file" id="import-file" accept=".json,application/json" hidden>
+          </div>
+          <p class="hint" id="import-msg"></p>
+        </form>
+      </div>
+      <footer class="panel-foot" id="sync-note"></footer>
+    </div>
+  </section>
+
+  <!-- loading -->
+  <section id="loading" class="screen" hidden>
+    <div class="loading-box"><p id="loading-text">Generating terrain…</p><div class="loadbar"><div id="loadfill"></div></div></div>
+  </section>
+
+  <!-- pause -->
+  <section id="pause" class="screen mc-menu mc-pause" hidden>
+    <div class="mc-pause-wrap">
+      <h2 class="mc-title">Game Menu</h2>
+      <div class="mc-buttons">
+        <button class="mcbtn" id="btn-resume">Back to Game</button>
+        <div class="mc-row"><button class="mcbtn" id="btn-settings-p">Options...</button><button class="mcbtn" id="btn-players-p">Heroes</button></div>
+        <div class="mc-row"><button class="mcbtn" id="btn-sheet-p">Character Sheet</button><button class="mcbtn" id="btn-journal-p">Journal</button></div>
+        <div class="mc-row"><button class="mcbtn" id="btn-howto-p">How to Play</button><button class="mcbtn" id="btn-wsettings">World Settings</button></div>
+        <div class="mc-row"><button class="mcbtn" id="btn-mode">Switch to Creative</button><button class="mcbtn" id="btn-export">Back Up World</button></div>
+        <button class="mcbtn" id="btn-lan-open">Open to LAN</button>
+        <button class="mcbtn" id="btn-quit">Save and Quit to Title</button>
+      </div>
+      <div class="pause-party" id="pause-party"></div>
+      <p class="mc-hint" id="pause-info"></p>
+    </div>
+  </section>
+
+  <!-- LAN: join a world on the home network -->
+  <section id="lanjoin" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2>Multiplayer</h2><button class="btn ghost" data-close>Back</button></header>
+      <div class="lan-body">
+        <h3 class="lan-h">Worlds on your network</h3>
+        <div class="lan-found" id="lan-found"></div>
+        <form class="lan-addr" id="lan-addr" autocomplete="off">
+          <label for="lan-ip">Or type the address the host's screen shows</label>
+          <div class="lan-addr-row"><input id="lan-ip" placeholder="192.168.1.23:25580" maxlength="80" spellcheck="false"><button class="btn primary" type="submit">Join</button></div>
+        </form>
+        <p class="lan-msg" id="lan-msg" role="status"></p>
+        <p class="hint" id="lan-help"></p>
+        <p class="hint">Split screen still works too: plug in a controller and press <b>Start</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LAN: share this world -->
+  <section id="lanhost" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2>Open to LAN</h2><button class="btn ghost" data-close>Back</button></header>
+      <div class="lan-body" id="lanhost-body"></div>
+    </div>
+  </section>
+
+  <!-- world settings -->
+  <section id="wsettings" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2 id="ws-title">World settings</h2><button class="btn ghost" data-close>Cancel</button></header>
+      <div class="ws-scroll"><div id="ws-body"></div><div id="ws-extra"></div></div>
+      <footer class="panel-foot"><button class="btn primary" id="ws-save" type="button">Save</button></footer>
+    </div>
+  </section>
+
+  <!-- players & skins -->
+  <section id="players" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2>Heroes</h2><button class="btn ghost" data-close>Done</button></header>
+      <div class="players-body">
+        <p class="players-note">Up to four people can play on one screen. Player 1 uses the keyboard, mouse or touch (or a controller); everyone else plugs in a controller and presses <b>Start</b> to join. Make each player's hero here ahead of time, or when you first step into a world. (A Minecraft <code>skin.png</code> still works for the looks.)</p>
+        <div class="profiles" id="profiles"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- settings -->
+  <section id="settings" class="screen panel-screen" hidden>
+    <div class="panel narrow">
+      <header class="panel-head"><h2>Settings</h2><button class="btn ghost" data-close>Done</button></header>
+      <div class="settings-grid" id="settings-grid"></div>
+    </div>
+  </section>
+
+  <!-- how to play -->
+  <!-- what changed in each version: the same notes the launcher shows, filled in from the template below -->
+  <section id="news" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2>What's new</h2><button class="btn ghost" data-close>Close</button></header>
+      <div class="news-body" id="news-body"></div>
+    </div>
+  </section>
+  <template id="ember-news">/*NEWS*/</template>
+
+  <section id="howto" class="screen panel-screen" hidden>
+    <div class="panel wide">
+      <header class="panel-head"><h2>How to play</h2><button class="btn ghost" data-close>Close</button></header>
+      <div class="howto-body">
+        <div>
+          <h3>The tabletop rules</h3>
+          <dl class="keys">
+            <dt>Z</dt><dd>Cast your ready spell (cantrips are free; levelled spells use a slot)</dd>
+            <dt>G</dt><dd>Ready the next spell you know</dd>
+            <dt>B</dt><dd>Class feature: Rage, Second Wind, Lay on Hands, Bardic Inspiration…</dd>
+            <dt>N</dt><dd>Species feature: Breath Weapon, Adrenaline Rush, Stonecunning…</dd>
+            <dt>P</dt><dd>Character sheet (short rest from here; a night in a bed is a long rest)</dd>
+            <dt>J</dt><dd>Journal: quests, people, places, letters</dd>
+            <dt>Right click</dt><dd>On someone: talk. Skill checks roll a d20 — your bonus against the DC</dd>
+          </dl>
+          <p class="hint" style="padding:0 0 10px">Every swing and arrow is an attack roll against the creature's armour class; every blow at you, its roll against yours. At 0 hit points you fall and roll death saves: a friend can hold Use on you, or heal you, to bring you back.</p>
+          <h3>Keyboard &amp; mouse</h3>
+          <dl class="keys">
+            <dt>W A S D</dt><dd>Move (double-tap W or hold Ctrl to sprint)</dd>
+            <dt>Space</dt><dd>Jump · swim up</dd>
+            <dt>Shift</dt><dd>Sneak (won't walk off edges, chops one log at a time)</dd>
+            <dt>Left click</dt><dd>Mine · attack</dd>
+            <dt>Right click</dt><dd>Place · use · eat · open</dd>
+            <dt>Shift + right click</dt><dd>Empty hand: pick up a chest, furnace or animal and carry it. Holding an item: set it down on the ground</dd>
+            <dt>1–9 · wheel</dt><dd>Choose hotbar slot</dd>
+            <dt>R</dt><dd>Placing mode: vertical slabs, upside-down stairs and trapdoors</dd>
+            <dt>F</dt><dd>Swap main hand and off hand</dd>
+            <dt>E</dt><dd>Inventory and crafting</dd>
+            <dt>Q</dt><dd>Drop item</dd>
+            <dt>T · /</dt><dd>Chat · commands (/help lists them)</dd>
+            <dt>F1 · F2</dt><dd>Hide the HUD · take a screenshot</dd>
+            <dt>F3 · F5</dt><dd>Debug info · first or third person</dd>
+            <dt>Esc</dt><dd>Pause</dd>
+          </dl>
+          <h3>Controller</h3>
+          <dl class="keys">
+            <dt>Sticks</dt><dd>Move · look (click left stick to sprint)</dd>
+            <dt>RT · LT</dt><dd>Mine · use</dd>
+            <dt>A · B</dt><dd>Jump · sneak</dd>
+            <dt>Y · X</dt><dd>Inventory · drop</dd>
+            <dt>LB · RB</dt><dd>Hotbar (in the inventory: recipe book; in the creator: pages)</dd>
+            <dt>D-pad up · left</dt><dd>Cast spell · next spell</dd>
+            <dt>D-pad right · R3</dt><dd>Class feature · species feature</dd>
+            <dt>D-pad down</dt><dd>Swap hands</dd>
+            <dt>Start</dt><dd>Pause · on a new controller, join split-screen</dd>
+          </dl>
+          <h3>Touch</h3>
+          <dl class="keys">
+            <dt>Left thumb</dt><dd>Move (push to the top edge to sprint)</dd>
+            <dt>Drag right side</dt><dd>Look around</dd>
+            <dt>Tap</dt><dd>Place · use</dd>
+            <dt>Press and hold</dt><dd>Mine (or hold the Mine button)</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Surviving</h3>
+          <p>There is no hunger. Eating any food heals you on the spot — apples, berries, and roast boar are your lifeline. You have ten hearts, as in the classic game. Heart Crystals (from bosses) add one for good; charms worn in the charm slot add more while you wear them, or guard against fire, water and falls.</p>
+          <p>Under water, watch your air bubbles; when they run out you drown. Sprint while under water to swim. If you die, your things wait in a grave and you're given a compass that points to it.</p>
+          <p>At night and in dark caves the monsters come out. Ghouls shamble at you, skeletons keep their distance and shoot, spiders climb walls and pounce, and fuselings creep close, hiss and burst — back away when you hear one. Slimes hop about deep underground. Spiders cling to cave roofs and drop on you from above. A good axe or sword can take a limb off: a ghoul without a leg crawls, a spider short of legs can't leap, a skeleton that loses its bow arm drops the bow (and may try to grab it back). Torches keep the dark away — hold one in your off hand, or hang a torch or lantern on your belt hook (it moves to your backpack when you wear one) and it lights up everything around you as you walk.</p>
+          <h3>Crafting</h3>
+          <p>Crafting works on the grid, the classic way: 2×2 in your inventory, 3×3 at a crafting table. Stuck? Open the recipe book beside the grid — it shows what you can make and can lay the ingredients out for you.</p>
+          <h3>Progression</h3>
+          <ol class="prog">
+            <li>Punch trees. Chop the base of a tree and the whole thing falls.</li>
+            <li>Craft a crafting table, then wooden and stone tools.</li>
+            <li>Smelt iron ore at a furnace. Coal or wood is fuel.</li>
+            <li>Craft an Ember Effigy and summon the Cinder Golem. Watch the ground — every attack is marked before it lands.</li>
+            <li>Its Cinder Core makes an Ember Igniter. Light an obsidian frame to enter the Ember Depths and mine cinderite.</li>
+            <li>A frame of Glow Lanterns filled with water opens the Skylands. Aether crystals there make a Pocket Key — your own private dimension.</li>
+          </ol>
+          <h3>Farms and animals</h3>
+          <p>Cows, pigs, sheep and chickens roam the grasslands. Feed two of a kind (wheat, carrots or seeds) and they'll have a baby. Milk cows with a bucket, shear sheep, and carry an animal home with an empty hand while sneaking — animals you set down stay put.</p>
+          <p>Bone meal (from bones, or a full composter) ripens crops and saplings. Shovels make paths, hoes till soil, and scaffolding lets you climb and sneak back down.</p>
+          <h3>Workstations</h3>
+          <p>Anvils repair and join tools, the loom and smithing table dye and upgrade, the fletching table makes arrows, the stonecutter and sawmill cut blocks. A bow shoots arrows; a spyglass zooms; a compass and clock show their faces on screen when held.</p>
+          <h3>Redstone and rails</h3>
+          <p>Mine redstone ore (it glows when touched) and lay the dust on the ground to carry power from levers, buttons, pressure plates, tripwires and torches. Power fades one step per block of dust; a repeater sends it on at full strength. Redstone opens doors (iron ones need it), lights lamps, fires dispensers and droppers, and moves pistons — sticky ones pull blocks back, and slime or honey drags its neighbours along.</p>
+          <p>Hoppers pass items between chests and furnaces. A comparator reads how full a container is. Observers pulse when the block they watch changes. Use a repeater to change its delay, a comparator to make it subtract, a daylight detector to invert it.</p>
+          <p>Rails join up, climb slopes and turn corners as you lay them. Set a minecart on the track and right-click to ride; W gives a push, sneak to get out. Powered rails speed carts up (and stop them when unpowered), detector rails send a signal as a cart passes, activator rails tip riders out. Chest and hopper carts carry things; feed a furnace cart coal and it pushes itself.</p>
+          <h3>World settings and commands</h3>
+          <p>Each world has its own settings (World settings in the pause menu, or More options when you make one): its name, game mode, how long days and nights last, and game rules such as keep inventory, mob griefing and fire spread.</p>
+          <p>Where commands are on (always in Creative), press T or / to type one: /time set day, /gamemode creative, /tp, /give, /fill and more. Builders get WorldEdit: //wand gives the wand (left click and right click mark two corners), then //set, //replace, //walls, //copy, //paste, //rotate, //stack, //sphere and //undo.</p>
+          <h3>Your worlds are safe</h3>
+          <p>The game saves every few seconds. Worlds keep working through updates, and you can download a backup file from the pause menu at any time. Worlds made before 0.5 keep their terrain as it was; new worlds get the new terrain, caves and biomes. Switch between Survival and Creative from the pause menu.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="fatal" hidden></div>
+</div>
+
+<script>/*SCRIPT*/</script>

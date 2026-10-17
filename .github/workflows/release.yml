@@ -1,0 +1,41 @@
+# Publishes a Shadowbloom release whenever the game changes on main: builds the game from src/,
+# packages the desktop apps when the app itself changed since the last release, and publishes the
+# release that the desktop launcher updates from. (Kept in tools/github/; the live copy is .github/workflows/.)
+name: Publish release
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'launcher/**', 'tools/build.js', 'tools/package.sh', 'tools/publish.sh']
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Package the desktop apps even if unchanged'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the game
+        run: node tools/build.js
+      - name: Cache Electron and AppImage tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/*.zip
+            .cache/appimagetool-x86_64.AppImage
+            .cache/runtime-x86_64
+          key: sb-tools-${{ hashFiles('tools/package.sh') }}
+      - name: Package (when the app changed) and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/publish.sh "${{ github.repository }}" ${{ github.event.inputs.app == 'true' && '--app' || '' }}
