@@ -23,7 +23,7 @@ const ORDER = [
   'game/dnd_monsters1.js', 'game/dnd_monsters2.js', 'game/dnd_monsters3.js',
   'campaign/engine.js', 'campaign/extras.js', 'campaign/restday.js', 'campaign/roads.js', 'campaign/encounters.js', 'campaign/companions.js', 'campaign/regionspawn.js',
   'campaign/sb_world.js', 'campaign/sb_act1.js', 'campaign/sb_act2.js', 'campaign/sb_act3.js', 'campaign/sb_regions.js', 'campaign/watcher.js', 'campaign/shadowbloom.js',
-  'render/gear3d.js', 'render/itemmodels.js', 'game/shields.js', 'game/traps.js', 'render/icons3d.js', 'ui/hymenu.js', 'game/sanity.js',
+  'render/gear3d.js', 'render/itemmodels.js', 'game/shields.js', 'game/traps.js', 'render/icons3d.js', 'ui/hymenu.js', 'game/sanity.js', 'input/mouseback.js',
   'boot/main.js',
 ];
 // DQ_SKIP=a.js,b.js leaves modules out of a test build (a module another hand is still writing)
@@ -37,7 +37,11 @@ try { new Function(bundle); } catch (e) {
   const bad = ORDER.filter(f => { try { new Function(src('js/' + f)); return false; } catch (er) { return er instanceof SyntaxError; } });
   throw new Error('Syntax error in ' + (bad.join(', ') || 'the bundle') + ': ' + e.message);
 }
-const css = src('styles.css') + '\n' + (fs.existsSync(path.join(root, 'src/dnd.css')) ? src('dnd.css') : '');
+// (alpha 5) the interface's two fonts travel inside the file (SIL Open Font License; src/fonts/), so the game looks the
+// same offline, in the desktop app, as online. Subset to Latin text and symbols, about 36 KB together.
+const fontFace = (fam, file, weight) => { const p = path.join(root, 'src/fonts', file); return fs.existsSync(p) ? `@font-face{font-family:'${fam}';src:url(data:font/woff;base64,${fs.readFileSync(p).toString('base64')}) format('woff');font-weight:${weight};font-style:normal;font-display:swap}\n` : ''; };
+const fonts = fontFace('Jersey 15', 'jersey15.woff', '400') + fontFace('Pixelify Sans', 'pixelify.woff', '400 700');
+const css = fonts + src('styles.css') + '\n' + (fs.existsSync(path.join(root, 'src/dnd.css')) ? src('dnd.css') : '');
 // the patch notes travel inside the game file, so the launcher and the game can show the news of whatever version is installed
 const news = fs.readFileSync(path.join(root, 'launcher/news.html'), 'utf8').trim();
 if (/<\/template|\/\*SCRIPT\*\//i.test(news)) throw new Error('news.html must not contain </template> or the script marker');
@@ -111,7 +115,7 @@ copy(path.join(root, 'launcher/desktop/main.js'), path.join(desk, 'main.js'));
 copy(path.join(root, 'launcher/desktop/preload.js'), path.join(desk, 'preload.js'));
 copy(path.join(root, 'launcher/desktop/lan.js'), path.join(desk, 'lan.js'));
 copy(path.join(root, 'launcher/desktop/updater.js'), path.join(desk, 'updater.js'));
-fs.writeFileSync(path.join(desk, 'launcher.html'), fs.readFileSync(path.join(root, 'launcher/desktop/launcher.html'), 'utf8').replace('<!--NEWS-->', () => fs.readFileSync(path.join(root, 'launcher/news.html'), 'utf8')).replace('__VERSION__', version));
+fs.writeFileSync(path.join(desk, 'launcher.html'), fs.readFileSync(path.join(root, 'launcher/desktop/launcher.html'), 'utf8').replace('/*FONTS*/', () => fonts).replace('<!--NEWS-->', () => fs.readFileSync(path.join(root, 'launcher/news.html'), 'utf8')).replace('__VERSION__', version));
 copy(path.join(icons, 'icon-512.png'), path.join(desk, 'icon.png'));
 // 0.9.0.40: launcherId fingerprints the app itself (launcher files and Electron version, not the game), so the
 // updater only offers a new app download when the app really changed; updateSource is the default repository.

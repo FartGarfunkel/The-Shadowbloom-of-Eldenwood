@@ -986,6 +986,31 @@ function campQuestRows(g) {
   rows.sort((a, b) => (a.done - b.done) || (b.main - a.main) || (a.order - b.order));
   return rows;
 }
+// (alpha 5) where a quest wants you next: the place, town or person its current step names (the person where they stand,
+// if they're about), and from where you are, which way and how far
+function campQuestTarget(g, r) {
+  const C = campDef(g); if (!C || !r || !r.st) return null;
+  const st = r.st, o = st.obj || {};
+  const ref = st.at || o.reach || o.clear || o.talk || null; if (!ref) return null;
+  if (typeof ref === 'string' && o.talk === ref && !st.at) { const e = CAMP_RT.ents.get(ref); if (e && e.alive !== false && !e.remove) return { at: [e.x, e.z], name: (C.npcs[ref] && C.npcs[ref].name) || ref }; }
+  const at = campPos(C, ref); if (!at) return null;
+  const name = Array.isArray(ref) ? '' : ((C.towns[ref] || C.places[ref] || C.npcs[ref] || {}).name || '');
+  return { at, name };
+}
+const CAMP_DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+function campWhere(lp, r) {
+  if (lp.g.dim !== 0) return null;   // the story's places are all in the Overworld
+  const T = campQuestTarget(lp.g, r); if (!T || !lp.player) return null;
+  const dx = T.at[0] - lp.player.x, dz = T.at[1] - lp.player.z, d = Math.hypot(dx, dz);
+  const dir = CAMP_DIRS[Math.round(((Math.atan2(dx, -dz) / (Math.PI / 4)) % 8 + 8)) % 8];
+  return { name: T.name, d, dir, here: d < 24 };
+}
+function campWhereText(w, long) {
+  if (!w) return '';
+  if (w.here) return long ? (w.name ? `${w.name}: you're here` : 'You\'re here') : 'here';
+  const dist = w.d < 100 ? Math.round(w.d / 10) * 10 : Math.round(w.d / 50) * 50;
+  return long ? `${w.name ? w.name + ': ' : ''}about ${dist} blocks ${w.dir}` : `${w.dir} · ${dist}`;
+}
 {
   const baseHud = questHud;
   questHud = function (lp) {
@@ -996,7 +1021,7 @@ function campQuestRows(g) {
     if (!rows.length) { if (el) el.querySelectorAll('.qt.camp').forEach(x => x.remove()); return; }
     if (!el) { el = document.createElement('div'); el.className = 'quest-track'; lp.el.appendChild(el); }
     el.querySelectorAll('.qt.main:not(.camp)').forEach(x => x.remove());
-    const html = rows.map(r => `<div class="qt camp${r.main ? ' main' : ''}"><b>${esc(r.title)}</b><span>${esc(r.goal)}</span></div>`).join('');
+    const html = rows.map(r => { const w = campWhereText(campWhere(lp, r)); return `<div class="qt camp${r.main ? ' main' : ''}"><b>${esc(r.title)}</b><span>${esc(r.goal)}</span>${w ? `<em class="qt-dir">${esc(w)}</em>` : ''}</div>`; }).join('');
     const box = el.querySelector('.qt-camp-box');
     if (box) { if (box.innerHTML !== html) box.innerHTML = html; }
     else el.insertAdjacentHTML('afterbegin', `<div class="qt-camp-box">${html}</div>`);
@@ -1045,6 +1070,7 @@ Object.assign(LocalPlayer.prototype, {
       body = rows.length ? rows.map(r => {
         const Q = r.Q, passed = (r.R.passed || []).map(k => Q.stages[k]).filter(Boolean);
         return `<div class="jn-ch ${r.done ? 'done' : r.main ? 'cur' : ''}${r.main ? '' : ' side'}"><div class="jn-t"><span class="jn-mark">${r.failed ? '✗' : r.done ? '✓' : r.main ? '★' : '·'}</span>${esc(r.title)}${r.main ? '' : ' <i>(side quest)</i>'}</div>
+          ${!r.done && r.st && campWhere(this, r) ? `<div class="jn-where">➜ ${esc(campWhereText(campWhere(this, r), true))}</div>` : ''}
           ${!r.done && r.st ? `<div class="jn-g">${esc(r.goal)}</div>${r.st.text && r.st.text !== r.goal ? `<div class="jn-h">${esc(r.st.text)}</div>` : ''}${r.st.hint ? `<div class="jn-h">${esc(r.st.hint)}</div>` : ''}` : ''}
           ${passed.length ? `<div class="jn-past">${passed.map(p => `<div>✓ ${esc(p.goal || p.text)}</div>`).join('')}</div>` : ''}</div>`;
       }).join('') : `<p class="jn-empty">Nothing yet. ${esc(C.hint || 'Speak with the people around you.')}</p>`;

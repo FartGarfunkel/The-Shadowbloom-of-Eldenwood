@@ -206,9 +206,34 @@ function campBuyMount(g, lp, e) {
   m.owner = lp.name; m.tamed = true; m.kept = true; m.saddled = true; m.petName = e.name || ['Bramble', 'Clover', 'Ash', 'Dusk', 'Pepper', 'Thistle', 'Willow', 'Biscuit'][Math.floor(Math.random() * 8)];
   if (MOB_TYPES[type].variants) m.variant = MOB_TYPES[type].variants[Math.floor(Math.random() * MOB_TYPES[type].variants.length)];
   g.addEntity(m);
-  lp.toast(`${m.petName} is yours, saddled and ready. Use it to ride`, 'good');
+  // (alpha 5) a whistle to call it, and the first one bought is your favourite: sneak + H calls it from anywhere
+  if (ITEMS.whistle && !p_has(lp.player, 'whistle')) { const left = lp.player.inv.add(mkStack('whistle', 1)); if (left) g.dropItem(mkStack('whistle', 1), P.x, P.y + 1, P.z); }
+  setTimeout(() => { try { if (!m.uid || typeof stableBook !== 'function') return; const book = stableBook(g, lp.name), r = book.find(q => q.uid === m.uid); if (r && !book.some(q => q.fav)) r.fav = true; } catch (e) { /* later */ } }, 4000);
+  lp.toast(`${m.petName} is yours, saddled and ready. Use it to ride · the whistle (or H) calls it from anywhere, sneak + H your favourite`, 'good');
+}
+function p_has(p, id) { return p.inv.count(id) > 0; }
+// (alpha 5) the bindings: one to a blade, a new one replacing the old
+const FORGE_INFUSE = {
+  coral: { name: 'Coral-bound', dice: 4, type: 'cold', line: 'Grom quenches it in seawater with the Coral Heart. Frost creeps along the edge and stays' },
+  lumina: { name: 'Lumina-bound', dice: 6, type: 'radiant', vs: ['undead', 'fiend'], line: 'Grom works the shard into the fuller. The steel glows faintly, and the dead will feel it' },
+  thorn: { name: 'Thornheart', dice: 4, type: 'poison', line: 'Grom binds the Thornheart into the grip. Tiny thorns rise along the edge, wet with something green' },
+};
+function campForgeArmor(g, lp, e) {
+  const p = lp.player, slots = p.inv.armor && p.inv.armor.slots, a = slots && slots[1], d = a && itemDef(a.id);
+  if (!a || !d || !d.armor) { lp.toast('Grom: “Wear the armour, then. I\'ll not temper a shirt you\'re holding.”', 'warn'); return; }
+  const max = e.max || 1;
+  if ((a.plus || 0) >= max) { lp.toast(`Grom: “That\'s as far as it goes with what you\'ve brought me.”`, ''); return; }
+  if ((a.plus || 0) < max - 1) { lp.toast(`Grom: “One step at a time. Bring it to +${max - 1} first.”`, 'warn'); return; }
+  for (const [it, n] of e.needs || []) if (p.inv.count(it) < n) { lp.toast(`Grom: “I\'ll need ${n} × ${(itemDef(it) || { name: it }).name} for that.”`, 'warn'); return; }
+  const price = e.price || 150;
+  if (goldCount(p) < price) { lp.toast(`Grom: “${price} gold. Steel doesn\'t work itself.”`, 'warn'); return; }
+  p.inv.remove('gold_coin', price); for (const [it, n] of e.needs || []) p.inv.remove(it, n);
+  a.plus = max; g.sfx.play('anvil');
+  if (typeof dndHudDirty === 'function') dndHudDirty(lp);
+  lp.toast(`Grom works the plates and the rivets: your ${d.name} is tempered to +${max} (Armour Class +${max})`, 'epic');
 }
 function campForge(g, lp, e) {
+  if (e.forge === 'armor') return campForgeArmor(g, lp, e);
   const p = lp.player, h = p.inv.held, d = h && itemDef(h.id);
   if (!h || !d || !(d.tool || (d.dnd && d.dnd.dmg) || d.dndWeapon || /sword|axe|mace|hammer|spear|dagger|bow|rapier|scimitar|glaive|halberd|pike|maul|club|staff|flail|morningstar|trident|whip|sickle/.test(h.id))) { lp.toast('Grom: “Put the weapon in your hand, lad. I can\'t temper your elbow.”', 'warn'); return; }
   const price = e.price || 40;
@@ -216,13 +241,17 @@ function campForge(g, lp, e) {
   if (e.forge === 'temper' && (h.plus || 0) >= (e.max || 1)) { lp.toast(`Grom: “It\'ll take no more than +${e.max || 1} from me${(e.max || 1) < 3 ? ' without something rarer to work in' : ''}.”`, ''); return; }
   if (e.forge === 'temper' && (h.plus || 0) < (e.max || 1) - 1) { lp.toast(`Grom: “One step at a time. Bring it to +${(e.max || 1) - 1} first, or the steel cracks.”`, 'warn'); return; }   // (alpha 4) +2 cost a scale and gave +1
   if (e.forge === 'resonant' && h.resonant) { lp.toast('Grom: “It already sings.”', ''); return; }
+  if (e.forge === 'infuse' && h.infuse === e.kind) { lp.toast('Grom: “It\'s already bound to that.”', ''); return; }
   for (const [it, n] of e.needs || []) if (p.inv.count(it) < n) { lp.toast(`Grom: “I\'ll need ${n} × ${(itemDef(it) || { name: it }).name} for that.”`, 'warn'); return; }
   if (goldCount(p) < price) { lp.toast(`Grom: “${price} gold. Steel doesn\'t work itself.”`, 'warn'); return; }
   p.inv.remove('gold_coin', price); for (const [it, n] of e.needs || []) p.inv.remove(it, n);
   if (e.forge === 'silver') h.silvered = 1;
   if (e.forge === 'temper') h.plus = Math.max((h.plus || 0) + 1, e.max || 1);
   if (e.forge === 'resonant') h.resonant = 1;
+  const was = h.infuse && FORGE_INFUSE[h.infuse];
+  if (e.forge === 'infuse' && FORGE_INFUSE[e.kind]) h.infuse = e.kind;
   g.sfx.play('anvil');
+  if (e.forge === 'infuse' && FORGE_INFUSE[e.kind]) { lp.toast(FORGE_INFUSE[e.kind].line + (was ? ` (the ${was.name} binding is gone)` : ''), 'epic'); return; }
   lp.toast(e.forge === 'silver' ? 'Grom silvers the edge: it bites the undead, the fiends and the shapeshifters' : e.forge === 'temper' ? `Grom tempers it: now +${h.plus}` : 'Grom works the crystal into the steel. It hums, and strikes with thunder', 'epic');
 }
 {
@@ -232,12 +261,14 @@ function campForge(g, lp, e) {
     const res = baseAtk(lp, e, W, o);
     try {
       const h = lp.player.inv.held;
-      if (res && h && (h.plus || h.silvered || h.resonant)) {
+      if (res && h && (h.plus || h.silvered || h.resonant || h.infuse)) {
         if (!res.hit && h.plus && Math.random() < h.plus * 0.05) res.hit = true;
         if (res.hit) {
           if (h.plus) res.dmg += h.plus;
           if (h.silvered && ['undead', 'fiend', 'shapechanger', 'lycanthrope'].includes(dndCType(e))) res.dmg += dndRoll(res.crit ? 2 : 1, 6).total;
           if (h.resonant) res.dmg += Math.round(dndRoll(res.crit ? 2 : 1, 6).total * dndMobTakes(e, 'thunder'));
+          const F = h.infuse && FORGE_INFUSE[h.infuse];
+          if (F && (!F.vs || F.vs.includes(dndCType(e)))) res.dmg += Math.round(dndRoll(res.crit ? 2 : 1, F.dice).total * dndMobTakes(e, F.type));
         }
       }
     } catch (err) { /* plain */ }
@@ -246,11 +277,74 @@ function campForge(g, lp, e) {
   const baseInfo = itemInfoHTML;
   itemInfoHTML = function (s, ...a) {
     let html = baseInfo(s, ...a);
-    try { if (s && (s.plus || s.silvered || s.resonant)) html += `<div class="ii-forge">${s.plus ? `Tempered +${s.plus}` : ''}${s.silvered ? `${s.plus ? ' · ' : ''}Silvered` : ''}${s.resonant ? `${s.plus || s.silvered ? ' · ' : ''}Resonant (+1d6 thunder)` : ''}</div>`; } catch (e) { /* plain */ }
+    try {
+      if (s && (s.plus || s.silvered || s.resonant || s.infuse)) {
+        const d = itemDef(s.id), F = s.infuse && FORGE_INFUSE[s.infuse], parts = [];
+        if (s.plus) parts.push(d && d.armor ? `Tempered +${s.plus} (Armour Class +${s.plus})` : `Tempered +${s.plus}`);
+        if (s.silvered) parts.push('Silvered');
+        if (s.resonant) parts.push('Resonant (+1d6 thunder)');
+        if (F) parts.push(`${F.name} (+1d${F.dice} ${F.type}${F.vs ? ' against ' + F.vs.join(' and ') : ''})`);
+        html += `<div class="ii-forge">${parts.join(' · ')}</div>`;
+      }
+    } catch (e) { /* plain */ }
     return html;
   };
   const baseNorm = normalizeStack;
-  normalizeStack = function (s) { const o = baseNorm(s); if (o && s) { if (s.plus) o.plus = s.plus | 0; if (s.silvered) o.silvered = 1; if (s.resonant) o.resonant = 1; } return o; };
+  normalizeStack = function (s) { const o = baseNorm(s); if (o && s) { if (s.plus) o.plus = s.plus | 0; if (s.silvered) o.silvered = 1; if (s.resonant) o.resonant = 1; if (s.infuse && FORGE_INFUSE[s.infuse]) o.infuse = s.infuse; } return o; };
   const baseMerge = canMerge;
-  canMerge = function (a, b) { return baseMerge(a, b) && (a.plus || 0) === (b.plus || 0) && !!a.silvered === !!b.silvered && !!a.resonant === !!b.resonant; };
+  canMerge = function (a, b) { return baseMerge(a, b) && (a.plus || 0) === (b.plus || 0) && !!a.silvered === !!b.silvered && !!a.resonant === !!b.resonant && (a.infuse || null) === (b.infuse || null); };
+  // tempered armour: a tempered piece adds its temper to your Armour Class (the best one worn; they don't stack)
+  const baseAC = dndArmorClass;
+  dndArmorClass = function (c, inv) {
+    const A = baseAC(c, inv);
+    try { let p = 0; for (const s of (inv && inv.armor && inv.armor.slots) || []) if (s && s.plus) p = Math.max(p, s.plus | 0); if (p && A) A.ac += p; } catch (e) { /* plain */ }
+    return A;
+  };
+}
+
+// ---- (alpha 5) horse gear: saddlebags and barding, kept in the stable book (so they go where the horse goes) ----------
+{
+  const GEAR = { barding_leather: ['leather', 0.75, 'Leather barding'], barding_scale: ['scale', 0.55, 'Scale barding'] };
+  const baseUse = LocalPlayer.prototype.petUse;
+  LocalPlayer.prototype.petUse = function (e, held, ...a) {
+    try {
+      const g = this.g, p = this.player;
+      if (e && e.isPetOf && e.isPetOf(this) && MOUNTS[e.type] && !e.baby && typeof stableRec === 'function') {
+        const h = held || p.inv.held, r = e.uid ? stableRec(g, this.name, e.uid) : null, nm = e.petName || 'your horse';
+        if (h && (h.id === 'saddlebags' || GEAR[h.id])) {
+          if (g.isGuest) { this.toast('In a shared world only the host can fit horse gear for now', 'warn'); return true; }
+          if (!r) { this.toast('Give it a moment to settle', ''); return true; }
+          const use1 = () => { if (!g.creative) { h.n--; if (h.n <= 0) p.inv.held = null; } this.swingArm(); g.sfx.play('equip'); };
+          if (h.id === 'saddlebags') {
+            if (r.bags) { this.toast(`${nm} already carries saddlebags`, ''); return true; }
+            r.bags = new Array(18).fill(null); use1();
+            this.toast(`Saddlebags on ${nm}: sneak and use it, empty-handed, to open them`, 'good'); return true;
+          }
+          const [kind, , label] = GEAR[h.id], old = r.barding;
+          if (old === kind) { this.toast(`${nm} already wears that`, ''); return true; }
+          r.barding = kind; use1();
+          if (old) { const back = old === 'leather' ? 'barding_leather' : 'barding_scale'; if (ITEMS[back]) { const left = p.inv.add(mkStack(back, 1)); if (left) g.dropItem(mkStack(back, 1), p.x, p.y + 1, p.z); } }
+          this.toast(`${label} on ${nm}: it takes ${kind === 'leather' ? 'a quarter' : 'almost half'} less harm`, 'good'); return true;
+        }
+        if (!h && p.sneaking && r && r.bags) {
+          if (g.isGuest) return baseUse.call(this, e, held, ...a);
+          this.swingArm(); g.sfx.play('chest');
+          this.openInventory('container', { cart: { name: (e.petName ? e.petName + '\'s' : 'Your horse\'s') + ' saddlebags', items: r.bags } });
+          return true;
+        }
+      }
+    } catch (err) { console.warn('horse gear', err); }
+    return baseUse.call(this, e, held, ...a);
+  };
+  // barding takes the edge off the blows
+  const baseHurt = Mob.prototype.hurt;
+  Mob.prototype.hurt = function (amount, src, ...a) {
+    try {
+      if (this.tamed && this.uid && this.owner && MOUNTS[this.type] && typeof stableRec === 'function' && this.game.meta) {
+        const r = stableRec(this.game, this.owner, this.uid);
+        if (r && r.barding) amount = amount * (r.barding === 'scale' ? 0.55 : 0.75);
+      }
+    } catch (e) { /* plain */ }
+    return baseHurt.call(this, amount, src, ...a);
+  };
 }

@@ -1,6 +1,6 @@
 # The Shadowbloom of Eldenwood
 
-**Current version:** Alpha 0.1.0.4
+**Current version:** Alpha 0.1.0.5
 **Status:** Alpha. The whole campaign is in and ready to play from start to finish, but things will change and you may meet a bug or two.
 
 ![A party of heroes in the square at Stonebridge](screenshots/heroes.png)
@@ -84,5 +84,7 @@ GeruDoku isn't part of The Shadowbloom of Eldenwood and isn't included with it: 
 ## Credits and licence notes
 
 This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+The interface fonts, Jersey 15 (The Soft Type Project Authors) and Pixelify Sans (The Pixelify Sans Project Authors), are licensed under the SIL Open Font License 1.1; their licences are in `src/fonts/`.
 
 Built on DokuQuest. Not affiliated with or endorsed by Wizards of the Coast, Hypixel Studios or Mojang.

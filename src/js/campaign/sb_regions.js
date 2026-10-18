@@ -75,14 +75,14 @@ Object.assign(SB.creatures, {
   smuggler_captain: { name: 'Captain Vessa Marrow', base: 'raider', boss: true, scale: 1.15, tint: [0.2, 0.3, 0.45, 0.3], hp: 110, ac: 15, toHit: 6, damage: 7, xp: 700, drops: [['gold_coin', 20, 40, 1]] },
   leviathan: { name: 'the Leviathan of Saltwind Harbor', base: 'drowned', boss: true, scale: 3.2, tint: [0.15, 0.35, 0.5, 0.55], hp: 520, ac: 16, toHit: 9, damage: 12, xp: 5900, drops: [['leviathan_scale', 2, 4, 1]] },
   drowned_villager: { name: 'a drowned villager of Aethel', base: 'drowned', tint: [0.3, 0.6, 0.6, 0.35], hp: 30, ac: 12, toHit: 4, damage: 4, xp: 100 },
-  coral_warden: { name: 'the Coral Warden', base: 'iron_golem', boss: true, scale: 1.2, tint: [0.95, 0.45, 0.5, 0.45], hp: 240, ac: 17, toHit: 8, damage: 10, xp: 2900 },
+  coral_warden: { name: 'the Coral Warden', base: 'iron_golem', boss: true, scale: 1.2, tint: [0.95, 0.45, 0.5, 0.45], hp: 240, ac: 17, toHit: 8, damage: 10, xp: 2900 , drops: [['coral_heart', 1, 1, 1]] },
   echo_shade: { name: 'an echo shade', base: 'wraith', tint: [0.6, 0.6, 0.95, 0.45], hp: 34, ac: 13, toHit: 5, damage: 5, xp: 200 },
   bog_lurker: { name: 'a bog lurker', base: 'crocodile', tint: [0.3, 0.4, 0.2, 0.3], hp: 48, ac: 13, toHit: 5, damage: 6, xp: 300 },
   stone_guardian: { name: 'a stone guardian', base: 'iron_golem', scale: 0.9, tint: [0.6, 0.58, 0.55, 0.4], hp: 70, ac: 16, toHit: 6, damage: 8, xp: 700 },
   shadow_wolf: { name: 'a shadow wolf', base: 'wolf', tint: [0.1, 0.05, 0.15, 0.6], hp: 30, ac: 13, toHit: 5, damage: 5, xp: 200 },
   corrupted_beast: { name: 'the Corrupted Beast of the Plains', base: 'wolf', boss: true, scale: 2.4, tint: [0.12, 0.02, 0.1, 0.65], hp: 260, ac: 15, toHit: 8, damage: 11, xp: 2900, drops: [['beast_fang', 1, 1, 1]] },
   crystal_sentinel: { name: 'a crystalline sentinel', base: 'iron_golem', scale: 0.85, tint: [0.55, 0.75, 1, 0.5], hp: 80, ac: 17, toHit: 7, damage: 8, xp: 1100 },
-  heart_guardian: { name: 'the Guardian of the Heart of Lumina', base: 'iron_golem', boss: true, scale: 1.7, tint: [0.5, 0.8, 1, 0.55], hp: 420, ac: 18, toHit: 10, damage: 13, xp: 7200 },
+  heart_guardian: { name: 'the Guardian of the Heart of Lumina', base: 'iron_golem', boss: true, scale: 1.7, tint: [0.5, 0.8, 1, 0.55], hp: 420, ac: 18, toHit: 10, damage: 13, xp: 7200 , drops: [['lumina_shard', 1, 1, 1]] },
   pollen_raider: { name: 'a pollen-mad raider', base: 'raider', tint: [0.85, 0.75, 0.2, 0.35], hp: 28, ac: 12, toHit: 4, damage: 5, xp: 100, drops: [['gold_coin', 1, 5, 0.6]] },
   raider_chief: { name: 'Sorn the Blooming', base: 'raider', boss: true, scale: 1.2, tint: [0.9, 0.7, 0.15, 0.4], hp: 130, ac: 14, toHit: 6, damage: 8, xp: 1100, drops: [['gold_coin', 15, 30, 1]] },
   scourgestinger: { name: 'the Scourgestinger of the Bloom', base: 'cave_spider', boss: true, scale: 3.0, tint: [0.7, 0.25, 0.15, 0.45], hp: 300, ac: 16, toHit: 8, damage: 11, xp: 2900, drops: [['stinger_barb', 1, 1, 1]] },
@@ -99,6 +99,12 @@ Object.assign(SB.items, {
   beast_fang: { name: 'Fang of the Corrupted Beast', art: 'dagger', cols: ['#e8e0d0', '#3a2a3a', '#ffffff'], trinket: { skills: { intimidation: 2 } }, desc: 'Carried: +2 Intimidation. The nomads will know what you did.' },
   stinger_barb: { name: 'Scourgestinger Barb', art: 'dagger', cols: ['#a03a2a', '#3a0a0a', '#ffb0a0'], desc: 'Still dripping. Alchemists pay well.' },
   fey_thornheart: { name: 'Fey Thornheart', art: 'gem', cols: ['#5aa040', '#1a3a10', '#c0ff90'], trinket: { skills: { nature: 2 } }, desc: 'The Thorn Queen\'s heart, cleansed. Carried: +2 Nature.' },
+  // (alpha 5) horse gear, and what Grom can work into steel
+  saddlebags: { name: 'Saddlebags', art: 'satchel', cols: ['#7a4a2a', '#3a2010', '#c8945a'], desc: 'Use them on your horse to strap them on. Then sneak and use it, empty-handed, to open them: eighteen slots that go where it goes, even when you call it from the stable.' },
+  barding_leather: { name: 'Leather Barding', icon: 'leather_chestplate', desc: 'Armour for a horse. Use it on yours: it takes a quarter less harm.' },
+  barding_scale: { name: 'Scale Barding', icon: 'scale_chestplate', desc: 'Heavy armour for a horse. Use it on yours: it takes almost half the harm.' },
+  coral_heart: { name: 'Coral Heart', art: 'gem', cols: ['#f08a9a', '#5a1a2a', '#ffe0e8'], desc: 'The Coral Warden\'s core, cold as the deep. Grom could bind it into a blade.' },
+  lumina_shard: { name: 'Shard of the Heart of Lumina', art: 'crystal', cols: ['#a0e0ff', '#1a4a6a', '#ffffff'], desc: 'It glows without heat. The dead flinch from it. Grom could bind it into a blade.' },
   water_breath_draught: { name: 'Draught of the Deep', art: 'potion', cols: ['#40a0c0', '#104050', '#a0f0ff'], desc: 'Breathe water for a long while. The harbor\'s divers swear by it.' },
 });
 
@@ -281,12 +287,19 @@ Object.assign(SB.quests, {
 {
   const G = SB.npcs.grom, N = G.talk && G.talk.nodes;
   if (N) {
-    N.forge = { say: 'Upgrades, is it? (He wipes his hands.) Silver for the dead and the things that wear borrowed shapes. A proper temper for the edge. And if you bring me something that hums — a Leviathan scale, a cinder crystal — I can make the steel sing like Lyra\'s did.', opts: [
+    N.forge = { say: 'Upgrades, is it? (He wipes his hands.) Silver for the dead and the things that wear borrowed shapes. A proper temper for the edge, or for the armour on your back. And if you bring me something that hums — a Leviathan scale, a cinder crystal, a heart from some deep place — I can make the steel sing like Lyra\'s did.', opts: [
       { t: 'Silver the weapon in my hand (40 gp)', do: [{ forge: 'silver', price: 40 }], go: 'forge' },
       { t: 'Temper it to +1 (120 gp, 2 iron ingots)', do: [{ forge: 'temper', price: 120, max: 1, needs: [['iron_ingot', 2]] }], go: 'forge' },
       { t: 'Temper it to +2 (300 gp, a Leviathan Scale)', if: { has: 'leviathan_scale' }, do: [{ forge: 'temper', price: 300, max: 2, needs: [['leviathan_scale', 1]] }], go: 'forge' },
       { t: 'Temper it to +3 (800 gp, a Scourgestinger Barb and a Fang of the Beast)', if: { all: [{ has: 'stinger_barb' }, { has: 'beast_fang' }] }, do: [{ forge: 'temper', price: 800, max: 3, needs: [['stinger_barb', 1], ['beast_fang', 1]] }], go: 'forge' },
       { t: 'Make it sing: resonance-bound (200 gp, a cinder crystal)', if: { has: 'cinder_crystal' }, do: [{ forge: 'resonant', price: 200, needs: [['cinder_crystal', 1]] }], go: 'forge' },
+      // (alpha 5) what the wider world gives a smith: one binding to a blade (a new one replaces the old)
+      { t: 'Bind the Coral Heart into it: cold as the deep (250 gp)', if: { has: 'coral_heart' }, do: [{ forge: 'infuse', kind: 'coral', price: 250, needs: [['coral_heart', 1]] }], go: 'forge' },
+      { t: 'Bind the Lumina shard into it: the dead fear it (300 gp)', if: { has: 'lumina_shard' }, do: [{ forge: 'infuse', kind: 'lumina', price: 300, needs: [['lumina_shard', 1]] }], go: 'forge' },
+      { t: 'Bind the Thornheart into it: thorns that poison (250 gp)', if: { has: 'fey_thornheart' }, do: [{ forge: 'infuse', kind: 'thorn', price: 250, needs: [['fey_thornheart', 1]] }], go: 'forge' },
+      // and armour: the chestpiece you're wearing
+      { t: 'Temper the armour I\'m wearing to +1 (150 gp, 4 iron ingots)', do: [{ forge: 'armor', price: 150, max: 1, needs: [['iron_ingot', 4]] }], go: 'forge' },
+      { t: 'Temper my armour to +2 (400 gp, a piece of living heartwood)', if: { has: 'heartwood' }, do: [{ forge: 'armor', price: 400, max: 2, needs: [['heartwood', 1]] }], go: 'forge' },
       { t: 'That\'s all.', end: true }], bye: false };
     // reach it from his first page
     const st = N.start || N[Object.keys(N)[0]];
@@ -296,7 +309,7 @@ Object.assign(SB.quests, {
 const SB_STABLE = (name, town, post, look, line, extra) => ({
   name, title: 'Stablemaster', town, post, look: SB_LOOK(look.species || 'human', look),
   about: 'Horses for the road, and a saddle to go with them.',
-  wares: [['saddle', 1, 20, 0], ['hay_bale', 4, 1, 0], ['apple', 6, 1, 0]],
+  wares: [['saddle', 1, 20, 0], ['whistle', 1, 2, 0], ['saddlebags', 1, 12, 0], ['barding_leather', 1, 40, 0], ['barding_scale', 1, 150, 0], ['hay_bale', 4, 1, 0], ['apple', 6, 1, 0]],
   talk: { start: 'start', nodes: { start: { say: line, opts: [
     { t: 'Buy a riding horse, saddled (75 gp)', do: [{ mount: 'horse', price: 75 }], end: true },
     ...(extra || []),

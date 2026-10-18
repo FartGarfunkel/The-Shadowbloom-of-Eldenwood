@@ -7,7 +7,7 @@
 
 function keyName(code) {
   if (!code) return '—';
-  const M = { Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4', Mouse4: 'Mouse 5', Space: 'Space', ShiftLeft: 'L Shift', ShiftRight: 'R Shift',
+  const M = { Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse Back', Mouse4: 'Mouse Forward', Space: 'Space', ShiftLeft: 'L Shift', ShiftRight: 'R Shift',
     ControlLeft: 'L Ctrl', ControlRight: 'R Ctrl', AltLeft: 'L Alt', AltRight: 'R Alt', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Enter: 'Enter', NumpadEnter: 'Num Enter',
     Slash: '/', Backslash: '\\', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Backquote: '`', Tab: 'Tab', CapsLock: 'Caps Lock' };
   if (M[code]) return M[code];

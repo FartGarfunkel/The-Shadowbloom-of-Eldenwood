@@ -65,6 +65,13 @@ function createWindow() {
   win.webContents.on('will-navigate', (e, url) => {
     if (!url.startsWith('file:')) { e.preventDefault(); if (/^https?:/i.test(url)) shell.openExternal(url); }
   });
+  // (alpha 5) The mouse's back button (and Alt+Left) is the browser's Back: from the game it went back to the launcher
+  // without saving. Each page forgets the one before it, so there's nothing to go back to, and the back/forward
+  // commands Windows sends from a mouse are ignored.
+  win.webContents.on('did-finish-load', () => {
+    try { const h = win.webContents.navigationHistory; if (h && h.clear) h.clear(); else if (win.webContents.clearHistory) win.webContents.clearHistory(); } catch (e) { /* nothing to forget */ }
+  });
+  win.on('app-command', (e, cmd) => { if (cmd === 'browser-backward' || cmd === 'browser-forward') e.preventDefault(); });
 
   // Closing the window saves the world you're in first (at most a few seconds).
   let closing = false;

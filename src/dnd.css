@@ -162,6 +162,10 @@
 .quest-track .qt.camp { flex-direction: column; gap: 1px; padding: 4px 9px 5px; }
 .quest-track .qt.camp b { white-space: normal; overflow: visible; font-size: 13px; letter-spacing: 0.02em; }
 .quest-track .qt.camp span { white-space: normal; text-align: left; max-width: none; font-family: inherit; font-size: 12px; line-height: 1.32; color: #ddd2bf; }
+/* (alpha 5) which way, and how far */
+.quest-track .qt.camp .qt-dir { font-style: normal; font-size: 11px; color: #e8c878; letter-spacing: 0.03em; }
+.quest-track .qt.camp .qt-dir::before { content: '➜ '; }
+.camp-journal .jn-where { color: #e8c878; font-size: 13px; margin: 2px 0 3px; }
 .nt-check { color: var(--gold); font-weight: 700; }
 .nt-check.ok { color: #8fe38f; }
 .nt-check.no { color: #e8a070; }

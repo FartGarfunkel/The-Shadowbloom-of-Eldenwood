@@ -30,7 +30,10 @@ function shieldHeld(p) { const off = p.inv.offhand, h = p.inv.held; return isShi
       if (a && a !== p) {
         const dx = a.x - p.x, dz = a.z - p.z, d = Math.hypot(dx, dz) || 1, fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
         if ((dx * fx + dz * fz) / d > 0.35) {
-          amount = Math.max(0, Math.round(amount * 0.25 * 10) / 10);
+          // (alpha 5) arrows, bolts and anything else thrown or shot stop dead on it, like Minecraft's; a blow still
+          // jars through (a quarter of it)
+          const shot = src.type === 'arrow' || src.type === 'projectile' || src.projectile || src.ray || src.tool === 'arrow' || src.tool === 'dndmissile';
+          amount = shot ? 0 : Math.max(0, Math.round(amount * 0.25 * 10) / 10);
           src = Object.assign({}, src, { knock: (src.knock ?? 1) * 0.2, blocked: true });
           try { this.g.sfx.playAt('hit_wood' in (typeof SND_FX !== 'undefined' ? SND_FX : {}) ? 'hit_wood' : 'anvil', p.x, p.y + 1, p.z, 16); } catch (e) { /* quiet */ }
           this._blockE = 0.75;
@@ -43,4 +46,30 @@ function shieldHeld(p) { const off = p.inv.offhand, h = p.inv.held; return isShi
   // others see the shield raised
   const basePose = LocalPlayer.prototype.pose;
   LocalPlayer.prototype.pose = function () { const P = basePose.call(this); if (this.blocking) P.blocking = 1; return P; };
+}
+
+// (alpha 5) a raised shield is a wall to arrows: they glance off it (and can't hurt anyone after), over more than the
+// body itself, so an arrow that would have grazed your side is caught too
+{
+  const baseHits = arrowHitsPawn;
+  arrowHitsPawn = function (arrow, nx, ny, nz) {
+    if (arrow.glanced) return false;
+    try {
+      const g = arrow.game;
+      if (!(arrow.owner && arrow.owner.player)) for (const q of g.locals) {
+        const p = q.player; if (!p || p.dead || !q.blocking || q === arrow.owner) continue;
+        if (Math.abs(nx - p.x) < 0.8 && Math.abs(nz - p.z) < 0.8 && ny > p.y + 0.15 && ny < p.y + 2.05) {
+          const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), sp = Math.hypot(arrow.vx, arrow.vz) || 1;
+          if ((-arrow.vx * fx - arrow.vz * fz) / sp > 0.3) {
+            arrow.glanced = true; arrow.pickup = false; arrow.owner = null; arrow.damage = 0;
+            arrow.vx = fx * (2 + Math.random() * 2) + (Math.random() - 0.5) * 3; arrow.vz = fz * (2 + Math.random() * 2) + (Math.random() - 0.5) * 3; arrow.vy = 3 + Math.random() * 2;
+            q._blockE = 0.75;
+            try { g.sfx.playAt('hit_wood' in (typeof SND_FX !== 'undefined' ? SND_FX : {}) ? 'hit_wood' : 'anvil', p.x, p.y + 1.2, p.z, 16); } catch (e) { /* quiet */ }
+            return false;
+          }
+        }
+      }
+    } catch (e) { /* a plain hit */ }
+    return baseHits(arrow, nx, ny, nz);
+  };
 }

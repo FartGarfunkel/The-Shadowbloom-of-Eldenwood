@@ -151,3 +151,185 @@ function watcherChoice(g, again) {
   if (again) { ask(); return; }
   campNarrate(g, [{ title: 'The Watcher Falls', text: 'He does not fall the way the others fell. He comes apart like a reflection in disturbed water, and for a moment, between the pieces, you see the Veil itself: thin as breath, humming, waiting for a hand on it.\n\nIt can be set three ways. Lyra knew. Eldon knew. Now you do.' }], 'He Who Watches', ask);
 }
+
+// ---- (alpha 5) his realm, in the campaign: what he kept ------------------------------------------------------------------
+// "Broken pieces of Eldenwood hanging in the dark: a well, half a cottage, the Stonebridge fountain with no town around
+// it." The halls you walk through hold them now, on the floor where you pass: half a cottage in the first hall and a
+// village well; the Stonebridge fountain, its lamps still lit, in the second; a market stall, a bench under a lamp and a
+// grave with fresh flowers in the third. Only in a campaign world, and only in the parts of his realm not yet seen.
+const REALM_PIECES = (() => {
+  const K = (k, alt) => (B[k] !== undefined ? k : alt);
+  const P = {};
+  const add = (name, fn) => { const L = []; fn((x, y, z, k) => { if (k && B[k] !== undefined) L.push([x, y, z, B[k]]); }); let h = 0, x0 = 0, x1 = 0, z0 = 0, z1 = 0; for (const [x, y, z] of L) { h = Math.max(h, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); } P[name] = { L, h, box: [x0, z0, x1, z1] }; };
+  const PL = K('spruce_planks', 'planks'), LOG = K('spruce_log', 'log');
+  add('cottage', (put) => {
+    for (let x = 0; x <= 7; x++) for (let z = 0; z <= 5; z++) put(x, -1, z, PL);
+    for (let x = 0; x <= 7; x++) for (let y = 0; y <= 3; y++) put(x, y, 0, (x === 0 || x === 7) ? LOG : (y >= 1 && y <= 2 && (x === 3 || x === 4)) ? 'glass_pane' : PL);
+    for (let z = 1; z <= 5; z++) for (let y = 0; y <= 3; y++) put(0, y, z, z === 5 ? LOG : (y >= 1 && y <= 2 && (z === 2 || z === 3)) ? 'glass_pane' : PL);
+    put(7, 0, 1, 'cobblestone'); put(7, 1, 1, PL); put(6, 0, 3, 'cobblestone');                  // the wall that isn't there any more
+    for (let x = 1; x <= 2; x++) for (let y = 0; y <= 2 - x; y++) put(x, y, 5, PL);
+    for (let x = 0; x <= 6; x++) for (let z = 0; z <= 2; z++) if ((x * 7 + z * 3) % 5 !== 0) put(x, 4, z, 'spruce_slab');   // half a roof
+    put(1, 0, 1, 'crafting_table'); put(1, 0, 2, 'barrel'); put(6, 0, 1, 'bookshelf'); put(6, 1, 1, 'bookshelf');
+    put(3, 0, 2, 'oak_stairs'); put(4, 0, 2, 'oak_fence'); put(4, 1, 2, 'flower_pot'); put(3, 3, 1, 'chain'); put(3, 2, 1, 'lantern');
+    put(2, 0, 3, 'red_carpet'); put(3, 0, 3, 'red_carpet');
+  });
+  add('well', (put) => {
+    for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) { if (x || z) put(x, 0, z, 'cobblestone'); else { put(0, -1, 0, 'water'); put(0, -2, 0, 'water'); put(0, 0, 0, 'water'); } }
+    for (const x of [-1, 1]) { put(x, 1, 0, 'oak_fence'); put(x, 2, 0, 'oak_fence'); }
+    for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) put(x, 3, z, 'spruce_slab');
+    put(0, 2, 0, 'chain');
+    for (let a = 0; a < 8; a++) { const x = Math.round(Math.cos(a) * 3), z = Math.round(Math.sin(a) * 3); put(x, -1, z, 'gravel'); }
+  });
+  add('fountain', (put) => {
+    for (let x = -6; x <= 6; x++) for (let z = -6; z <= 6; z++) if (x * x + z * z <= 40) put(x, -1, z, (x * 3 + z * 5) % 4 === 0 ? 'mossy_stone_bricks' : 'stone_bricks');
+    for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) { const m = Math.max(Math.abs(x), Math.abs(z)); if (m === 3) put(x, 0, z, 'stone_bricks'); else if (m >= 1) put(x, 0, z, 'water'); }
+    for (let y = 0; y <= 2; y++) put(0, y, 0, 'stone_bricks'); put(0, 3, 0, 'stone_brick_slab'); put(0, 4, 0, 'lantern');
+    for (const [x, z] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) { for (let y = 0; y <= 2; y++) put(x, y, z, 'oak_fence'); put(x, 3, z, 'lantern'); }
+    put(0, 0, -5, 'spruce_stairs'); put(-1, 0, -5, 'spruce_stairs'); put(0, 0, 5, 'spruce_stairs'); put(1, 0, 5, 'spruce_stairs');
+    put(-5, 0, 0, 'red_banner'); put(5, 0, 0, 'red_banner');
+  });
+  add('market', (put) => {
+    for (const [x, z] of [[0, 0], [4, 0], [0, 2], [4, 2]]) for (let y = 0; y <= 2; y++) put(x, y, z, 'oak_fence');
+    for (let x = 0; x <= 4; x++) for (let z = 0; z <= 2; z++) put(x, 3, z, x % 2 ? 'wool' : 'red_wool');
+    for (let x = 1; x <= 3; x++) put(x, 0, 0, 'barrel'); put(2, 1, 0, 'flower_pot'); put(1, 0, 2, 'chest');
+  });
+  add('bench', (put) => {
+    for (let x = 0; x <= 2; x++) put(x, 0, 0, 'spruce_stairs');
+    for (let y = 0; y <= 2; y++) put(4, y, 0, 'oak_fence'); put(4, 3, 0, 'lantern');
+    put(-2, -1, 1, 'dirt_path'); put(-1, -1, 1, 'dirt_path'); put(0, -1, 1, 'dirt_path'); put(1, -1, 1, 'dirt_path'); put(2, -1, 1, 'dirt_path'); put(3, -1, 1, 'dirt_path');
+  });
+  add('grave', (put) => {
+    for (let x = -1; x <= 1; x++) for (let z = -1; z <= 2; z++) put(x, -1, z, 'podzol');
+    put(0, 0, -1, 'stone_bricks'); put(0, 1, -1, 'stone_brick_slab');
+    put(-1, 0, 1, 'flower_red'); put(1, 0, 1, 'flower_red'); put(0, 0, 2, 'candle');
+  });
+  return P;
+})();
+// where they stand: [hall, piece, x from the hall's start, z]
+const REALM_LAYOUT = [[1, 'cottage', 28, -26], [1, 'well', 66, 22], [2, 'fountain', 48, 0], [3, 'market', 24, 20], [3, 'bench', 64, -22], [3, 'grave', 46, -32]];
+{
+  const baseRealm = WorldGen.prototype.generateRealm;
+  WorldGen.prototype.generateRealm = function (ch) {
+    const r = baseRealm.call(this, ch);
+    try {
+      const C = typeof campGenDef === 'function' ? campGenDef() : null;
+      if (!C || C.id !== 'shadowbloom') return r;
+      const bx = ch.cx * 16, bz = ch.cz * 16, F = RIFT_FLOOR + 1;
+      for (const [hi, name, ox, oz] of REALM_LAYOUT) {
+        const Pc = REALM_PIECES[name]; if (!Pc) continue;
+        const wx0 = hi * RIFT_HALL + ox, wz0 = oz, [x0, z0, x1, z1] = Pc.box;
+        if (wx0 + x1 + 1 < bx || wx0 + x0 - 1 > bx + 15 || wz0 + z1 + 1 < bz || wz0 + z0 - 1 > bz + 15) continue;
+        // room for it: nothing in the way from the floor to a little above its top
+        for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) {
+          const lx = wx0 + x - bx, lz = wz0 + z - bz; if (lx < 0 || lx > 15 || lz < 0 || lz > 15) continue;
+          for (let y = F; y <= F + Pc.h + 3; y++) ch.blocks[cidx(lx, y, lz)] = 0;
+        }
+        for (const [x, y, z, id] of Pc.L) {
+          const lx = wx0 + x - bx, lz = wz0 + z - bz; if (lx < 0 || lx > 15 || lz < 0 || lz > 15) continue;
+          ch.blocks[cidx(lx, F + y, lz)] = id;
+        }
+      }
+    } catch (e) { console.warn('realm pieces', e); }
+    return r;
+  };
+}
+
+// ---- (alpha 5) the Watcher's own fight, in the campaign ------------------------------------------------------------------
+// On top of what he does anywhere (stepping through space, his bolts, calling his corrupted, the stare that stops time):
+// at four fifths he shows you yourself (memory shades), past half the Bloom answers him (Veil stalkers), and at the last
+// every eye you ever felt on your back opens: the light goes, and the mirror-echoes come.
+{
+  const baseAI = MONSTER_AI.herobrine;
+  const PHASES = [
+    { at: 0.8, say: 'He shows you yourself.', mobs: ['memory_shade', 'memory_shade'] },
+    { at: 0.55, say: 'The Bloom answers him. Black petals open across the floor.', mobs: ['veil_stalker', 'veil_stalker'] },
+    { at: 0.3, say: 'Every eye you ever felt on your back opens at once.', mobs: ['mirror_echo', 'mirror_echo'], dark: true },
+  ];
+  MONSTER_AI.herobrine = function (dt, p, ...rest) {
+    const res = baseAI.call(this, dt, p, ...rest);
+    try {
+      const g = this.game;
+      if (!g.isGuest && g.meta && g.meta.campaign && p) {
+        const S = campState(g);
+        if (S.flags.watcher_awake && !S.flags.watcher_fallen) {
+          const frac = this.health / this.maxHealth;
+          this.cPhase = this.cPhase || 0;
+          while (this.cPhase < PHASES.length && frac < PHASES[this.cPhase].at) {
+            const Ph = PHASES[this.cPhase++];
+            riftSay(g, Ph.say, 'epic');
+            for (let k = 0; k < Ph.mobs.length; k++) {
+              const t = MOB_TYPES[Ph.mobs[k]] ? Ph.mobs[k] : 'rift_ghoul'; if (!MOB_TYPES[t]) continue;
+              const a = Math.random() * TAU, m = g.addEntity(new Mob(g, t, this.x + Math.cos(a) * 5, this.y + 0.2, this.z + Math.sin(a) * 5)); if (m) m.huntT = 60;
+            }
+            if (Ph.dark) for (const l of g.locals) { if (Math.hypot(l.player.x - this.x, l.player.z - this.z) < 40) { l.darkT = Math.max(l.darkT || 0, 7); l.dreadT = 2.5; } }
+            g.sfx.play('rift_static');
+          }
+        }
+      }
+    } catch (e) { /* the fight goes on */ }
+    return res;
+  };
+}
+
+// ---- (alpha 5) after the tale: Eldenwood remembers how you set the Veil ------------------------------------------------
+{
+  const done = (f) => ({ all: [{ quest: 'q14', done: true }, f] });
+  const L = [
+    ['eldon', 'veil_seal', 'I\'ve closed the Deep Notes. Not finished: closed. A good book knows when to stop. (He taps the cover.) Your name is the last entry. I left room under it, in case.'],
+    ['eldon', 'veil_retune', 'A filter, I always said. You set it the way the first Harmonists meant it. (He shows you a page.) Three songbirds this week that the records say died out a century ago. I\'ve started a new book just for the things coming home.'],
+    ['eldon', 'veil_watch', 'The guards on the east gate say someone stands on the ridge at night. They wave. (He doesn\'t look at you.) I keep a lamp in my window now. Just so you know where I am.'],
+    ['grom', 'veil_seal', 'Quiet forge. Good forge. (He turns a blade in the light.) Best thing about the end of the world not ending: people want horseshoes again.'],
+    ['grom', 'veil_retune', 'Strangest thing. Ore from the old Shadowfell seams, clean as new. Rings like a bell when I strike it. Lyra would\'ve loved it.'],
+    ['grom', 'veil_watch', 'Kept your chair. (He nods at it.) Nobody sits in it. Even the cat won\'t.'],
+    ['mira', 'veil_seal', 'Ember sleeps through every night now. Every single night. I didn\'t know how tired I was until I wasn\'t.'],
+    ['mira', 'veil_retune', 'The grey trees past the river have buds on them. Grey buds, mind. But buds. Ember says they\'re remembering how.'],
+    ['mira', 'veil_watch', 'Ember leaves a cup of milk on the sill at night. For the one on the hill, she says. In the morning it\'s always gone, and the cup is washed.'],
+    ['pip', 'veil_seal', 'They\'re writing a song about you down at the Mug. It\'s terrible. I love it.'],
+    ['pip', 'veil_retune', 'Did you hear? Somebody saw a white stag by the Silent Stones. A WHITE STAG. Those aren\'t even real.'],
+    ['pip', 'veil_watch', 'I waved at the ridge last night. I think it waved back. Nobody believes me. (Quieter.) Did it?'],
+    ['elara', 'veil_seal', 'The mists haven\'t come in since. I still ring the dawn bell, though. Habit. And thanks.'],
+    ['elara', 'veil_retune', 'The council asked me what to do about the things wandering in from the old forest. I said: welcome them. They were here first.'],
+    ['elara', 'veil_watch', 'The watch reports a figure on the ridge every clear night. I\'ve ordered them to leave it be. (A pause.) And to salute.'],
+    ['aldwyn', 'veil_seal', 'The lanterns burn steady now. The dead sleep, and so do I. The Pale Flame thanks you, child.'],
+    ['aldwyn', 'veil_retune', 'Some of the lanterns have started to sing, very softly. Not the old wrong song. A new one. I think it\'s a lullaby.'],
+    ['aldwyn', 'veil_watch', 'I lit a lantern for you on the chapel step. I hope you can see it from wherever you stand.'],
+  ];
+  for (const [npc, f, say] of L) if (SB.npcs[npc]) sbAlt(npc, done(f), say);
+}
+// the watch kept: on clear nights near Stonebridge, a figure on the high ground, facing the town; look at it, or come
+// close, and it's gone (the haunting's own figure, but it never follows and leaves nothing behind)
+class WatchOver extends Watcher {
+  faceAt() { const C = campDef(this.game), T = C && C.towns.stonebridge; if (T) this.yaw = Math.atan2(-(T.at[0] - this.x), -(T.at[1] - this.z)); }
+  vanish() { this.remove = true; WATCH_OVER.active = null; WATCH_OVER.next = this.game.time + 240 + Math.random() * 300; }
+  // the "He is here" rule sends the haunting away; this isn't the haunting, so it doesn't apply
+  update(dt) {
+    const g = this.game, own = Object.prototype.hasOwnProperty.call(g, 'rules'), R = g.rules;
+    g.rules = function () { return Object.assign({}, R.call(g), { haunting: true }); };
+    try { super.update(dt); } finally { if (own) g.rules = R; else delete g.rules; }
+  }
+}
+const WATCH_OVER = { active: null, next: 0 };
+{
+  const baseUpd = Game.prototype.updateEntities;
+  Game.prototype.updateEntities = function (dt) {
+    try {
+      const g = this, S = g.meta && g.meta.campaign && campState(g);
+      if (S && S.flags.veil_watch && g.dim === 0 && g.state === 'playing' && g.env && g.env.day < 0.35 && !WATCH_OVER.active && g.time > WATCH_OVER.next) {
+        WATCH_OVER.next = g.time + 30;
+        const C = campDef(g), T = C.towns.stonebridge, p = g.player;
+        if (T && p && Math.hypot(p.x - T.at[0], p.z - T.at[1]) < 170 && Math.random() < 0.5) {
+          let best = null;
+          for (let k = 0; k < 14; k++) {
+            const a = Math.random() * TAU, d = 55 + Math.random() * 30, x = Math.floor(p.x + Math.sin(a) * d), z = Math.floor(p.z + Math.cos(a) * d);
+            if (!g.world.isLoaded(x, z) || Math.hypot(x - T.at[0], z - T.at[1]) < campTownR(T) + 8) continue;
+            const y = findSafeY(g.world, x, z); if (y < SEA + 2) continue;
+            if (!best || y > best[1]) best = [x + 0.5, y, z + 0.5];
+          }
+          if (best) { const w = new WatchOver(g, best[0], best[1], best[2], 'far'); w.life = 60 + Math.random() * 60; WATCH_OVER.active = w; g.entities.push(w); }
+        }
+      }
+      if (WATCH_OVER.active && (WATCH_OVER.active.remove || !this.entities.includes(WATCH_OVER.active))) WATCH_OVER.active = null;
+    } catch (e) { /* only a sight */ }
+    return baseUpd.call(this, dt);
+  };
+}

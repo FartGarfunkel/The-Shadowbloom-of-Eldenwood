@@ -394,6 +394,8 @@ function avatarAnim(pose) {
   A.legR[2] = (A.legR[2] || 0) + Math.sin(t * 0.55) * 0.02 * idle; A.legL[2] = (A.legL[2] || 0) + Math.sin(t * 0.55) * 0.02 * idle;
   if (pose.held && !pose.carry) A.armR[0] = A.armR[0] * 0.5 + 0.31;
   if (pose.off && !pose.carry) A.armL[0] = A.armL[0] * 0.5 + 0.31;
+  // (alpha 5) a shield raised: the arm brought up and across the chest
+  if (pose.blocking && pose.off && !pose.carry) { A.armL = [1.05, -0.45, 0.1]; A.foreL = [0.55, 0, 0]; }
   // off the ground: knees up; falling hard: arms up
   if (pose.air && !pose.swim && !pose.sit) {
     const fall = clamp(-(pose.vy || 0) / 12, 0, 1);
@@ -675,7 +677,19 @@ function avatarDraws(out, gl, skin, pose) {
     out.push(at(hm, { mesh: im.mesh, noCull: im.kind !== 'block' }));
   };
   if (!fp && pose.held && !carry) held(pose.bow > 0 && /^bow/.test(pose.held) ? M.foreL : M.foreR, pose.held);   // drawing: the bow in the left hand
-  if (!fp && pose.off && !carry) held(M.foreL, pose.off);
+  // (alpha 5) a shield is big (Minecraft-sized: knee to shoulder) and held like one: its face out to the side as you
+  // walk, and up in front of your chest, facing forward, when you block
+  const shieldDraw = (id) => {
+    const im = heldMesh(gl, id), hm = Mat4.create(), s = 0.92;
+    if (pose.blocking && bodyM) { hm.set(bodyM); Mat4.translate(hm, -2.5 * PX, 6.5 * PX, -9.5 * PX); Mat4.multiply(hm, hm, new Float32Array([-s, 0, 0, 0, 0, s, 0, 0, 0, 0, -s, 0, 0, 0, 0, 1])); }
+    else {
+      // at the side, its face turned out and forward (55° round from the side), so it reads from the front as well
+      const c = Math.cos(0.96), n = Math.sin(0.96);
+      hm.set(M.foreL); Mat4.translate(hm, -2.6 * PX, -5.5 * PX, 0); Mat4.multiply(hm, hm, new Float32Array([-n * s, 0, c * s, 0, 0, s, 0, 0, -c * s, 0, -n * s, 0, 0, 0, 0, 1]));
+    }
+    out.push(at(hm, { mesh: im.mesh, noCull: true }));
+  };
+  if (!fp && pose.off && !carry) { if (typeof isShieldId === 'function' && isShieldId(pose.off)) shieldDraw(pose.off); else held(M.foreL, pose.off); }
   // body is pivoted at the waist: +y up the back, -z is the chest
   if (bodyM && pose.back && (!fp || fpTorso)) {
     // the pack itself, straps over the shoulders (in first person, just the straps down your chest)

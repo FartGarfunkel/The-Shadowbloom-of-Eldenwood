@@ -17,6 +17,15 @@ for a in "$@"; do case "$a" in --app) FORCE_APP=1 ;; *) SRC="$a" ;; esac; done
 [ -n "$SRC" ] || { echo "Which repository? bash tools/publish.sh owner/name" >&2; exit 1; }
 
 node tools/build.js
+# (alpha 5) the gate: never publish a build that doesn't reach its main menu, throws while starting, or has broken
+# campaign links (tools/release_check.py). SKIP_CHECK=1 skips it (only for a deliberate emergency re-publish).
+if [ -z "${SKIP_CHECK:-}" ]; then
+  CHK="$(mktemp -d)"
+  python3 -m venv "$CHK/venv" && "$CHK/venv/bin/pip" install --quiet playwright==1.56.0 \
+    && "$CHK/venv/bin/python" -m playwright install --with-deps chromium > "$CHK/install.log" 2>&1 \
+    || { echo "Could not set up the release check (see the log above); not publishing." >&2; cat "$CHK/install.log" >&2 || true; exit 1; }
+  "$CHK/venv/bin/python" tools/release_check.py dist/shadowbloom.html 60 || { echo "The release check failed: not publishing." >&2; exit 1; }
+fi
 FULLVER="$(grep -o "GAME_VERSION = '[^']*'" src/js/save/storage.js | cut -d"'" -f2)"
 SHOWVER="$(echo "$FULLVER" | sed 's/-alpha//')"
 TAG="v$SHOWVER"

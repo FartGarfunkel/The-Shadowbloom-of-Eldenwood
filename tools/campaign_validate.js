@@ -8,7 +8,7 @@
   const note = (map, k, where) => { if (!map.has(k)) map.set(k, []); map.get(k).push(where); };
   const deferred = [];
   // flags the game's code sets (campaign/watcher.js: entering his realm, his fall)
-  for (const f of ['realm_entered', 'watcher_fallen']) setFlags.set(f, ['code']);
+  for (const f of ['realm_entered', 'watcher_fallen', 'veil_seal', 'veil_retune', 'veil_watch']) setFlags.set(f, ['code']);
   const FX_KEYS = new Set(['flag', 'unflag', 'quest', 'stage', 'complete', 'fail', 'give', 'take', 'gold', 'xp', 'letter', 'read', 'note', 'follow', 'stay', 'leave', 'back', 'narrate', 'toast', 'spawn', 'tp', 'heal', 'rest', 'rep', 'learn', 'end', 'weather', 'time', 'music', 'milestone', 'reveal', 'clear', 'attune', 'unknown', 'hurt', 'inspire', 'if', 'n', 'party', 'why', 'title', 'kind', 'type', 'at',
     // (alpha 3) effects handled by campaign/companions.js: houses, stables, Grom's forge
     'house', 'price', 'mount', 'forge', 'needs', 'max', 'name']);

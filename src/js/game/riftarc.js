@@ -572,7 +572,7 @@ class RiftBolt extends Entity {
     this.age += dt; if (this.age > 3) { this.remove = true; return; }
     for (let s = 0; s < 3; s++) {
       this.x += this.vx * dt / 3; this.y += this.vy * dt / 3; this.z += this.vz * dt / 3;
-      for (const p of g.pawns()) if (!p.dead && Math.abs(p.x - this.x) < 0.5 && Math.abs(p.z - this.z) < 0.5 && this.y > p.y - 0.2 && this.y < p.y + 1.9) { p.hurt((this.owner && this.owner.T && this.owner.T.boltDmg) || 5, { type: 'magic', attacker: this.owner, knock: 2 }); this.burst(); return; }
+      for (const p of g.pawns()) if (!p.dead && Math.abs(p.x - this.x) < 0.5 && Math.abs(p.z - this.z) < 0.5 && this.y > p.y - 0.2 && this.y < p.y + 1.9) { p.hurt((this.owner && this.owner.T && this.owner.T.boltDmg) || 5, { type: 'magic', attacker: this.owner, knock: 2, projectile: true }); this.burst(); return; }
       if (T_SOLID[g.world.getBlock(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z))]) { this.burst(); return; }
     }
     spellFx(g, this.x, this.y, this.z, 'mana_arcane', 3, 0.3, { life: 0.4, size: 0.1 });
