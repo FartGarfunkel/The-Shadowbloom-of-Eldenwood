@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------
 
 const SAVE_FORMAT = 1;
-const GAME_VERSION = '0.1.0-alpha.5';
+const GAME_VERSION = '0.1.0-alpha.6';
 // 0.9.0.40: the GitHub repository (owner/name) whose releases the desktop launcher updates from.
 // The launcher reads it out of whichever game file it runs, so a game update can switch updates on.
 const UPDATE_SOURCE = 'FartGarfunkel/The-Shadowbloom-of-Eldenwood';

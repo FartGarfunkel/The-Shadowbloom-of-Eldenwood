@@ -816,3 +816,12 @@ html.touch .crosshair { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
 /* (0.9.0.48) the mouse let go: click to take it back */
 .click-play { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); padding: 8px 18px; border-radius: 6px; background: rgba(0, 0, 0, 0.55); color: #f2ede4; font-size: 15px; letter-spacing: 0.02em; pointer-events: none; z-index: 5; }
 .click-play[hidden] { display: none; }
+
+/* (alpha 6) the interface's size (ui/uiscale.js): each piece of interface is zoomed; the world isn't */
+:root { --uiz: 1; }
+/* the title screen: its menu and the hero's card, but not the hero standing on the stage (sized to the screen) */
+.view > *, .screen:not(#title), .server-view, #padsetup, .camp-narr, #title > :not(.hy-hero):not(.hy-shade), #title .hy-hero-card { zoom: var(--uiz); }
+#uiz-note { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 200; padding: 6px 14px; background: rgba(10, 8, 6, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); color: #f0e6d0; font-size: 15px; border-radius: 4px; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+#uiz-note.on { opacity: 1; }
+/* the hero's card is zoomed but the hero isn't: keep the card clear of the version note under it */
+#title.hy-menu .hy-hero { bottom: max(clamp(44px, 9vh, 96px), calc(66px * var(--uiz))); }

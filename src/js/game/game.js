@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = (() => {
   return {
     renderDist: coarse ? 4 : 6, sens: 1, padSens: 1, fov: 72, scale: coarse ? 0.75 : 1, fancyLeaves: !coarse, plantDetail: 'near', wavingPlants: true,
     autoJump: coarse, volume: 0.6, music: 0.5, ambience: 0.7, invertY: false, showFps: false, fpBody: true, viewBob: true, brightness: 0.35, split: 'auto',
-    particles: 2, guiScale: 'auto', toggleSneak: false, toggleSprint: false, screenShake: true, hurtTilt: true, fpsLimit: 0, padLayout: 'xbox', heldSway: true, clouds: true, portalViews: true,
+    particles: 2, guiScale: 'auto', uiScale: null, toggleSneak: false, toggleSprint: false, screenShake: true, hurtTilt: true, fpsLimit: 0, padLayout: 'xbox', heldSway: true, clouds: true, portalViews: true,
     farTerrain: coarse ? 0 : 1024,
   };
 })();

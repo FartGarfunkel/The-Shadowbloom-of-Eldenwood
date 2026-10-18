@@ -526,7 +526,7 @@ class MapView {
       this.hover = this.toWorld(e);
       const d = this.drag;
       if (d) {
-        const dx = e.clientX - d.x, dy = e.clientY - d.y, dpr = this.dpr || 1;
+        const rr = cv.getBoundingClientRect(), dx = e.clientX - d.x, dy = e.clientY - d.y, dpr = cv.width / (rr.width || 1);   // (alpha 6) screen pixels to the canvas's, whatever the interface size
         if (Math.hypot(dx, dy) > 4) d.moved = true;
         if (d.moved) { this.cx = d.cx - dx * dpr / this.k; this.cz = d.cz - dy * dpr / this.k; }
       }
@@ -558,7 +558,7 @@ class MapView {
   }
   get size() { return this.cv.width; }
   toWorld(e) {
-    const r = this.cv.getBoundingClientRect(), dpr = this.dpr || 1;
+    const r = this.cv.getBoundingClientRect(), dpr = this.cv.width / (r.width || 1);
     const sx = (e.clientX - r.left) * dpr, sy = (e.clientY - r.top) * dpr;
     return [this.cx + (sx - this.cv.width / 2) / this.k, this.cz + (sy - this.cv.height / 2) / this.k];
   }

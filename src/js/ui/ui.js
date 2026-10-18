@@ -420,7 +420,7 @@ class UI {
       ['invertY', 'Invert look up/down', 'check'],
       ['showFps', 'Show FPS', 'check'],
       ['particles', 'Particles', 'select', [[2, 'All'], [1, 'Fewer'], [0, 'Off']]],
-      ['guiScale', 'Interface size', 'select', [['auto', 'Fit to screen'], ['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']]],
+      ['uiScale', 'Interface size', 'range', 0.5, 2, 0.05, v => Math.round(v * 100) + '%', 'Everything on screen that isn\'t the world: menus, windows, the hotbar, conversations, the map. Ctrl and + / − change it anywhere; Ctrl+0 is 100%.'],
       ['fpsLimit', 'Frame rate limit', 'select', [[0, 'Unlimited (smoothest)'], [60, '60 fps'], [30, '30 fps (saves battery)']]],
       ['padLayout', 'Controller buttons', 'select', [['xbox', 'Xbox (A jumps)'], ['playstation', 'PlayStation (✕ jumps)'], ['nintendo', 'Nintendo (B jumps, A/B swapped)']]],
       ['toggleSneak', 'Toggle sneak', 'check', 0, 0, 0, null, 'Press sneak once to crouch, again to stand.'],
@@ -439,8 +439,8 @@ class UI {
       if (type === 'range') {
         row.innerHTML = `<label for="${id}">${label}</label><output for="${id}">${fmt(s[key])}</output><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${s[key]}">${desc ? `<span class="desc">${desc}</span>` : ''}`;
         const inp = row.querySelector('input'), out = row.querySelector('output');
-        inp.oninput = () => { s[key] = Number(inp.value); out.textContent = fmt(s[key]); g.applySettingsLight(); };
-        inp.onchange = () => g.applySettings();
+        inp.oninput = () => { if (key === 'uiScale') { out.textContent = fmt(Number(inp.value)); return; } s[key] = Number(inp.value); out.textContent = fmt(s[key]); g.applySettingsLight(); };
+        inp.onchange = () => { if (key === 'uiScale') s[key] = Number(inp.value); g.applySettings(); };   // (alpha 6) the interface's size changes when you let go, not under your pointer
       } else if (type === 'select') {
         row.innerHTML = `<label for="${id}">${label}</label><select id="${id}">${min.map(([v, l]) => `<option value="${v}" ${String(s[key]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>${desc ? `<span class="desc">${desc}</span>` : ''}`;
         const sel = row.querySelector('select');

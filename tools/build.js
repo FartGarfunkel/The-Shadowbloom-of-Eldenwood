@@ -23,7 +23,7 @@ const ORDER = [
   'game/dnd_monsters1.js', 'game/dnd_monsters2.js', 'game/dnd_monsters3.js',
   'campaign/engine.js', 'campaign/extras.js', 'campaign/restday.js', 'campaign/roads.js', 'campaign/encounters.js', 'campaign/companions.js', 'campaign/regionspawn.js',
   'campaign/sb_world.js', 'campaign/sb_act1.js', 'campaign/sb_act2.js', 'campaign/sb_act3.js', 'campaign/sb_regions.js', 'campaign/watcher.js', 'campaign/shadowbloom.js',
-  'render/gear3d.js', 'render/itemmodels.js', 'game/shields.js', 'game/traps.js', 'render/icons3d.js', 'ui/hymenu.js', 'game/sanity.js', 'input/mouseback.js',
+  'render/gear3d.js', 'render/itemmodels.js', 'game/shields.js', 'game/traps.js', 'render/icons3d.js', 'ui/hymenu.js', 'game/sanity.js', 'input/mouseback.js', 'ui/uiscale.js',
   'boot/main.js',
 ];
 // DQ_SKIP=a.js,b.js leaves modules out of a test build (a module another hand is still writing)
@@ -41,7 +41,10 @@ try { new Function(bundle); } catch (e) {
 // same offline, in the desktop app, as online. Subset to Latin text and symbols, about 36 KB together.
 const fontFace = (fam, file, weight) => { const p = path.join(root, 'src/fonts', file); return fs.existsSync(p) ? `@font-face{font-family:'${fam}';src:url(data:font/woff;base64,${fs.readFileSync(p).toString('base64')}) format('woff');font-weight:${weight};font-style:normal;font-display:swap}\n` : ''; };
 const fonts = fontFace('Jersey 15', 'jersey15.woff', '400') + fontFace('Pixelify Sans', 'pixelify.woff', '400 700');
-const css = fonts + src('styles.css') + '\n' + (fs.existsSync(path.join(root, 'src/dnd.css')) ? src('dnd.css') : '');
+// (alpha 6) the interface is zoomed to its size setting (ui/uiscale.js), and CSS zoom multiplies viewport units too:
+// written against the interface's size, a panel told to be 90vh tall stays 90% of the screen at any size
+const vpUnits = (c) => c.split('\n').map(l => /hy-hero|hy-stage/.test(l) ? l : l.replace(/(\d*\.?\d+)v([hw])\b/g, 'calc($1v$2 / var(--uiz, 1))')).join('\n');   // (the title's hero isn't zoomed: its units stay)
+const css = fonts + vpUnits(src('styles.css') + '\n' + (fs.existsSync(path.join(root, 'src/dnd.css')) ? src('dnd.css') : ''));
 // the patch notes travel inside the game file, so the launcher and the game can show the news of whatever version is installed
 const news = fs.readFileSync(path.join(root, 'launcher/news.html'), 'utf8').trim();
 if (/<\/template|\/\*SCRIPT\*\//i.test(news)) throw new Error('news.html must not contain </template> or the script marker');

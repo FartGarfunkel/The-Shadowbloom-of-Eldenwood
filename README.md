@@ -1,6 +1,6 @@
 # The Shadowbloom of Eldenwood
 
-**Current version:** Alpha 0.1.0.5
+**Current version:** Alpha 0.1.0.6
 **Status:** Alpha. The whole campaign is in and ready to play from start to finish, but things will change and you may meet a bug or two.
 
 ![A party of heroes in the square at Stonebridge](screenshots/heroes.png)

@@ -690,8 +690,9 @@ class InvUI {
     if (!this.cursor) { el.hidden = true; return; }
     el.hidden = false; el.innerHTML = slotInner(this.cursor);
     const rr = this.root.getBoundingClientRect();
-    if (e && e.clientX !== undefined) { this._cx = e.clientX - rr.left; this._cy = e.clientY - rr.top - (e.pointerType && e.pointerType !== 'mouse' ? 36 : 0); }
-    else if (this.focus && this.focus.isConnected) { const fr = this.focus.getBoundingClientRect(); this._cx = fr.left - rr.left + fr.width * 0.75; this._cy = fr.top - rr.top + fr.height * 0.75; }
+    const z = typeof uiZoom === 'function' ? uiZoom() : 1;   // (alpha 6) the panel is drawn at the interface size: screen pixels to its own
+    if (e && e.clientX !== undefined) { this._cx = (e.clientX - rr.left) / z; this._cy = (e.clientY - rr.top) / z - (e.pointerType && e.pointerType !== 'mouse' ? 36 : 0); }
+    else if (this.focus && this.focus.isConnected) { const fr = this.focus.getBoundingClientRect(); this._cx = (fr.left - rr.left + fr.width * 0.75) / z; this._cy = (fr.top - rr.top + fr.height * 0.75) / z; }
     if (this._cx !== undefined) { el.style.left = this._cx + 'px'; el.style.top = this._cy + 'px'; }
   }
   showTip(s, e) {
@@ -699,7 +700,8 @@ class InvUI {
     if (!s || this.cursor) { t.hidden = true; return; }
     t.innerHTML = itemInfoHTML(s); t.hidden = false;
     const rr = this.root.getBoundingClientRect();
-    const x = Math.min(rr.width - t.offsetWidth - 6, e.clientX - rr.left + 14), y = Math.min(rr.height - t.offsetHeight - 6, e.clientY - rr.top + 10);
+    const z = typeof uiZoom === 'function' ? uiZoom() : 1;
+    const x = Math.min(rr.width / z - t.offsetWidth - 6, (e.clientX - rr.left) / z + 14), y = Math.min(rr.height / z - t.offsetHeight - 6, (e.clientY - rr.top) / z + 10);
     t.style.left = Math.max(4, x) + 'px'; t.style.top = Math.max(4, y) + 'px';
   }
   info(html) { const el = this.root.querySelector('.ip-info'); if (el) el.innerHTML = html; }
