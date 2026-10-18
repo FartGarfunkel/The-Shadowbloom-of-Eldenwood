@@ -173,6 +173,8 @@ function gatesTick(g, dt) {
       if (!g.world.isLoaded(G.cx, G.cz)) continue;
       // an empty town's gates hang open
       if (v.empty) { if (gateIsShut(g.world, G)) gateSet(g, G, true, false); continue; }
+      // (alpha 7) a town under lockdown keeps its own gates (campaign/lockdown.js)
+      if (typeof GATE_LOCK_HOOK === 'function' && GATE_LOCK_HOOK(g, v, G, pawns)) continue;
       if (!GATES_RT.seen.has(k)) { GATES_RT.seen.set(k, 1); GATES_RT.pending = GATES_RT.pending || new Map(); gateSet(g, G, !night, false) || (!night ? 0 : GATES_RT.pending.set(k, 1)); continue; }
       if (turned) { if (gateSet(g, G, !night, true) && night) gateDuskNews(g, v, G); else if (night) (GATES_RT.pending = GATES_RT.pending || new Map()).set(k, 1); continue; }
       if (GATES_RT.pending && GATES_RT.pending.has(k) && night && !GATES_RT.held.has(k)) { if (gateSet(g, G, false, true)) GATES_RT.pending.delete(k); continue; }

@@ -110,6 +110,15 @@ with sync_playwright() as p:
             else: prob(f'{pid}: no boss awake (bossIf {P["bossIf"]}) and nothing clears it'); ev(f"__dnd.camp.do({{ clear: {json.dumps(pid)} }})")
     def do_flag(f):
         if ev(f"__cp.flag({json.dumps(f)})"): return
+        if f == 'sewer_found':
+            # set by walking down the hatch in the Shadowed Mug: go and stand in the tunnels
+            spot = ev("__dnd.camp.spot('stonebridge_sewers', 'hall#0')")
+            if spot: goto(int(spot[0]), int(spot[2]), y=int(spot[1]), settle=3000)
+            for _ in range(8):
+                ev("window.__lock && (window.__lock.rt.t = 0, window.__lock.tick(1.01))")   # the lockdown's clock, now (the game runs slowly here)
+                if ev("__cp.flag('sewer_found')"): return
+                W(500)
+            prob('sewer_found: standing in the sewers did not find them'); ev("__cp.setFlag('sewer_found')"); return
         src = ev(f"__cp.source({json.dumps(f)})")
         if not src: prob(f'flag {f}: nothing sets it'); ev(f"__cp.setFlag({json.dumps(f)})"); return
         k = src['kind']
@@ -128,6 +137,15 @@ with sync_playwright() as p:
         ev("__cp.tick()"); W(600)
         if not ev(f"__cp.flag({json.dumps(f)})"): prob(f'flag {f} still unset after {src}'); ev(f"__cp.setFlag({json.dumps(f)})")
     def satisfy(q, sid, obj):
+        # (alpha 7) Stonebridge is sealed until the missing watch are found: play that chapter through
+        if q == 'q1' and sid == 'watch' and ev("__cp.stage('q_watch')") != 'DONE':
+            ev("__cp.tick()"); W(1500); ev("__cp.closeUI()")
+            if ev("__cp.stage('q_watch')") is None: prob('q1.watch: the runner never started The Missing Watch')
+            play('q_watch'); return
+        if q == 'q_watch' and sid == 'garrick':
+            for f in ('tamsin_lamp', 'nico_lamp', 'altar_lamp'): do_flag(f)
+            lamps = ev("__game.locals[0].player.inv.count('moonlamp')")
+            if lamps < 3: prob(f'q_watch: only {lamps} Moonlamps in hand'); ev("__cp.give('moonlamp')"); ev("__cp.give('moonlamp')"); ev("__cp.give('moonlamp')")
         objs = obj.get('any') or [obj]
         o = objs[0]
         if o.get('flag') and o['flag'] != '_never': do_flag(o['flag'])

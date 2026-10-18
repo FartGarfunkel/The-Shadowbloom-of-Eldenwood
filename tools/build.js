@@ -22,7 +22,7 @@ const ORDER = [
   'dnd/srd.js', 'dnd/spelldata.js', 'dnd/spells_more1.js', 'dnd/spells_more2.js', 'dnd/spells_more3.js', 'dnd/items.js', 'dnd/equipment.js', 'dnd/magicitems.js', 'dnd/dice.js', 'dnd/character.js', 'dnd/look.js', 'dnd/rules.js', 'dnd/spells.js', 'dnd/spells2.js', 'dnd/abilities.js', 'dnd/ranged.js', 'dnd/magic.js', 'dnd/progression.js', 'dnd/origins.js', 'dnd/creator.js',
   'game/dnd_monsters1.js', 'game/dnd_monsters2.js', 'game/dnd_monsters3.js',
   'campaign/engine.js', 'campaign/extras.js', 'campaign/restday.js', 'campaign/roads.js', 'campaign/encounters.js', 'campaign/companions.js', 'campaign/regionspawn.js',
-  'campaign/sb_world.js', 'campaign/sb_act1.js', 'campaign/sb_act2.js', 'campaign/sb_act3.js', 'campaign/sb_regions.js', 'campaign/watcher.js', 'campaign/shadowbloom.js',
+  'campaign/sb_world.js', 'campaign/sb_act1.js', 'campaign/sb_act2.js', 'campaign/sb_act3.js', 'campaign/sb_regions.js', 'campaign/lockdown.js', 'campaign/watcher.js', 'campaign/shadowbloom.js',
   'render/gear3d.js', 'render/itemmodels.js', 'game/shields.js', 'game/traps.js', 'render/icons3d.js', 'ui/hymenu.js', 'game/sanity.js', 'input/mouseback.js', 'ui/uiscale.js',
   'boot/main.js',
 ];

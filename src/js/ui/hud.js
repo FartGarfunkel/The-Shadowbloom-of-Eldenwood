@@ -182,8 +182,9 @@ class Hud {
   nameTags(cam) {
     const g = this.g, box = this.q('.tags');
     const others = [];
-    for (const o of g.locals) if (o !== this.lp && !o.dead) others.push([o.name, o.x, o.y + 2.1, o.z]);
-    if (g.net) for (const r of g.net.pawns()) if (!r.dead) others.push([r.name, r.x, r.y + 2.1, r.z]);
+    const top = (o) => typeof avatarTopOf === 'function' ? avatarTopOf(o.skin, 2.1) : 2.1;   // (alpha 7) over a halfling's head, or a goliath's
+    for (const o of g.locals) if (o !== this.lp && !o.dead) others.push([o.name, o.x, o.y + top(o), o.z]);
+    if (g.net) for (const r of g.net.pawns()) if (!r.dead) others.push([r.name, r.x, r.y + top(r), r.z]);
     while (box.children.length < others.length) { const d = document.createElement('div'); d.className = 'tag'; box.appendChild(d); }
     [...box.children].forEach((el, i) => {
       const o = others[i];

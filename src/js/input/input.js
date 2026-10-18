@@ -174,65 +174,9 @@ class InputManager {
       if (t !== c && t.closest && t.closest('.inv, .chat, .panel, .settings-grid, .lan-body, .death, .mapview')) return;
       if (t !== c && t.closest && !t.closest('#views') && !this.locked) return;
       e.preventDefault();
-      // (0.9.0.48) one slot per notch, whatever the wheel. An ordinary wheel sends one big step a notch; touchpads,
-      // high-resolution wheels and smooth scrolling (Linux) send a burst of small ones, which count once they add up
-      // to most of a notch. Shift (sneaking) no longer turns the wheel sideways and loses it.
-      // (0.9.0.50) timed by the game's own clock only: an event's own timestamp can come from another clock (on Linux
-      // especially), and one stamped in the future held the wheel up, ignoring every notch until the clock caught up.
-      const raw = e.deltaY || (e.shiftKey ? e.deltaX : 0);
-      const dy = raw * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1), dir = Math.sign(dy);
-      if (!dy) return;
-      const now = performance.now();
       this.wheelSeen = (this.wheelSeen || 0) + 1;     // (for the F3 screen)
-      // nothing remembered from the future (a clock that jumped): forget it
-      if (!(this._wheelLock <= now)) this._wheelLock = -1e9;
-      if (!(this._wheelT <= now)) this._wheelT = -1e9;
-      const step = () => { this.s.wheel += dir; this._wheelAcc = 0; this._wheelLock = now; this._wheelDir = dir; this.wheelSteps = (this.wheelSteps || 0) + 1; };
-      // (0.9.0.54) big and small events go through the same bursts: a notch that arrives as two big pieces (a
-      // high-resolution wheel at a low frame rate) steps once, not twice
-      const big = Math.abs(dy) >= 40;
-      // a pause (or a change of direction) starts a new notch, which counts as soon as most of a notch has added up
-      // (an ordinary wheel's one big event a notch counts at once); after that, only a whole notch more steps again (so
-      // turning slowly through one notch is one slot), however long it takes. How much a notch adds up to is learnt from
-      // this wheel's own bursts. A half notch is kept a moment.
-      const gap = now - this._wheelT; this._wheelT = now;
-      if (dir !== this._wheelSd || gap > 40) {
-        // the burst before, if it stood well apart from the others, was one notch: that's how big a notch is here
-        const Bp = this._burst;
-        if (Bp && Bp.sum >= 45 && Bp.t1 - Bp.t0 < 250 && Bp.before > 120 && gap > 120) {
-          const H = this._notchH || (this._notchH = []); H.push(Bp.sum); if (H.length > 8) H.shift();
-          const so = H.slice().sort((a, b) => a - b); this._notch = Math.max(45, Math.min(160, so[so.length >> 1]));
-          try { localStorage.setItem('dokuquest.wheelNotch', String(Math.round(this._notch))); } catch (er) { /* private mode */ }
-        }
-        this._burst = { t0: now, t1: now, sum: 0, steps: 0, before: gap, dir };
-      }
-      const Bu = this._burst; Bu.t1 = now; Bu.sum += Math.abs(dy);
-      if (dir !== this._wheelSd || gap > 250) this._wheelAcc = 0;
-      this._wheelSd = dir;
-      this._wheelAcc = (this._wheelAcc || 0) + dy;
-      if (this._notch === undefined) { let v = 0; try { v = +localStorage.getItem('dokuquest.wheelNotch') || 0; } catch (er) { v = 0; } this._notch = v >= 20 && v <= 160 ? v : 0; }
-      const N = this._notch || (big ? Math.max(90, Math.abs(dy)) : 90);
-      // a fresh notch: nothing stepped in this burst, nor in the last quarter second (pieces of one notch turned slowly
-      // come a little apart, and count together)
-      if (!Bu.steps && now - this._wheelLock > 250) {
-        // the first of a notch: an ordinary wheel's big event at once (unless it's a doubled event from some drivers)
-        if (big ? !(now - this._wheelLock < 25 && dir === this._wheelDir) : Math.abs(this._wheelAcc) >= Math.min(45, N * 0.8)) { step(); Bu.steps++; }
-        else if (!big) {
-          // (0.9.0.54) a lone small notch that never adds up to the usual amount (a slow wheel, a low scroll speed) still
-          // counts once it's over, if it stood on its own
-          clearTimeout(this._wheelTimer);
-          this._wheelTimer = setTimeout(() => {
-            const B2 = this._burst;
-            if (B2 === Bu && !B2.steps && B2.before > 250 && B2.sum >= 24 && performance.now() - B2.t1 >= 60 && this.enabled) {
-              this.s.wheel += B2.dir; this._wheelAcc = 0; this._wheelLock = performance.now(); this._wheelDir = B2.dir; this.wheelSteps = (this.wheelSteps || 0) + 1; B2.steps++;
-              // and that's how big a notch is on this wheel, so turning it steadily counts every notch too
-              const H = this._notchH || (this._notchH = []); H.push(B2.sum); if (H.length > 8) H.shift();
-              const so = H.slice().sort((a, b) => a - b); this._notch = Math.max(20, Math.min(160, so[so.length >> 1]));
-              try { localStorage.setItem('dokuquest.wheelNotch', String(Math.round(this._notch))); } catch (er) { /* private mode */ }
-            }
-          }, 90);
-        }
-      } else if (Math.abs(this._wheelAcc) >= N * 0.9 && now - this._wheelLock >= 30) { step(); Bu.steps++; }
+      const n = wheelNotches(this, e);
+      if (n) { this.s.wheel += n; this.wheelSteps = (this.wheelSteps || 0) + Math.abs(n); }
     }, { passive: false });
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
@@ -350,4 +294,59 @@ class InputManager {
     hold('[data-t="swap"]', () => { this.s.swap = true; }, null);
     hold('[data-t="mode"]', () => { this.s.place = true; }, null);
   }
+}
+
+// ---- (alpha 7) the mouse wheel: one hotbar slot per notch -------------------------------------------------------------
+// The old way guessed where one notch ended and the next began from how far apart the events came, and learnt a notch's
+// size from the bursts (and kept it). Turned quickly, notches ran together and every other one was lost; a size learnt
+// from a quick spin made the next notches count only every second or third. Now each event says how much it turned:
+//  - lines (Firefox) and pages: an event is a notch, or the fraction of one a fine wheel sends
+//  - Chromium (the desktop app, Chrome, Edge) and Firefox also say it in notches, as 120ths ("wheelDelta"): an ordinary
+//    wheel sends 120 a notch, a high-resolution or free-spinning one a share of it
+//  - only pixels: a hundred to a notch (Windows), and a touchpad's many small ones add up
+// Whole notches step at once; what's left over waits (a moment) toward the next. Nothing is timed but the pause that
+// forgets a half-turned notch, and a twin event a driver sends a few milliseconds after the first.
+function wheelNotches(st, e) {
+  const now = performance.now();
+  const mode = e.deltaMode;   // read first: Firefox then gives an ordinary wheel's notches as lines, not pixels
+  let raw = e.deltaY, legacy = e.wheelDeltaY;
+  if (!raw && e.shiftKey) { raw = e.deltaX; legacy = e.wheelDeltaX; }   // shift turns some wheels sideways (sneaking with a wheel)
+  if (!raw || !isFinite(raw)) return 0;
+  const dir = Math.sign(raw);
+  // f: how many notches this event turned; clean: it came in whole notches (an ordinary wheel), not a share of one
+  let f, clean;
+  if (mode === 2) { f = dir; clean = true; }
+  else if (mode === 1) { f = dir * Math.min(1, Math.abs(raw)); clean = Math.abs(raw) >= 1; }
+  else if (typeof legacy === 'number' && legacy && isFinite(legacy)) { f = dir * Math.abs(legacy) / 120; clean = Math.abs(legacy) % 120 === 0; }   // deltaY says which way (some setups flip only one of the two)
+  else { f = raw / 100; clean = false; }
+  f = Math.max(-3, Math.min(3, f));
+  const W = st._wh || (st._wh = { acc: 0, dir: 0, t: -1e9, lastStep: -1e9, lastWhole: -1e9, lastDir: 0, unit: 0 });
+  if (!(now >= W.t)) W.t = W.lastStep = W.lastWhole = -1e9;            // a clock that went backwards: start afresh
+  const alone = now - W.t > 120;                                          // nothing just before it: not part of a stream
+  // a pause, or a turn the other way, forgets a half-turned notch
+  if (dir !== W.dir || now - W.t > 450) W.acc = 0;
+  W.dir = dir; W.t = now;
+  if (clean && Math.abs(f) >= 1) {
+    // an ordinary wheel's notch steps at once; a twin of the one just before (a few drivers send each twice) doesn't
+    if (now - W.lastWhole < 6 && W.lastDir === dir) return 0;
+    W.lastWhole = now; W.lastDir = dir; W.acc = 0; W.lastStep = now;
+    return Math.round(f);
+  }
+  // a wheel that reports its notches as a share of 120 (pixels in some browsers): a good-sized event on its own is a notch,
+  // and the same size again, a notch again (a touchpad's stream of small, uneven pieces never looks like that)
+  if (!clean && mode === 0) {
+    const a = Math.abs(f);
+    let snap = false;
+    if (alone && a >= 0.4 && a < 0.95) { W.unit = a; snap = true; }
+    else if (W.unit && a >= 0.4 && a < 0.95 && Math.abs(a - W.unit) <= W.unit * 0.15) snap = true;
+    if (snap) { W.acc = 0; if (now - W.lastStep < 25) return 0; W.lastStep = now; return dir; }
+  }
+  W.acc += f;
+  if (Math.abs(W.acc) < 0.95) return 0;
+  // a fine wheel or a touchpad: a step for each whole notch's worth, but no faster than a quick hand turns a notched
+  // wheel (a touchpad flick sends hundreds of pixels in a moment)
+  if (now - W.lastStep < 45) { W.acc = dir * Math.min(Math.abs(W.acc), 1.9); return 0; }
+  const n = Math.trunc(W.acc + dir * 0.05);
+  W.acc -= n; W.lastStep = now;
+  return Math.max(-1, Math.min(1, n));
 }

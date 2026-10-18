@@ -223,13 +223,16 @@ const PACK_LOOK = {
   };
 }
 // boxes in skin pixels on the back: x across the shoulders, y up from the waist, z out from the back
-function buildPack3D(mb, key, mode, gear = '') {
+// (alpha 7) ov: worn over clothes {po, lift, fz}: the whole pack stands po further out from the back (over a robe, a cloak,
+// a cape or armour, not through them), the straps come lift higher over the shoulders and lie at fz down the chest
+function buildPack3D(mb, key, mode, gear = '', ov = null) {
   const L = PACK_LOOK[key] || PACK_LOOK.leather_backpack, big = L.big;
-  const tf = mode === 'item' ? (v) => [v[0] * 0.1, (v[1] - 7) * 0.1, (v[2] - 4.2) * 0.1] : (v) => v;
+  const po = ov ? ov.po || 0 : 0, lift = ov ? ov.lift || 0 : 0, fz = ov && ov.fz != null ? ov.fz : -2.32;
+  const tf = mode === 'item' ? (v) => [v[0] * 0.1, (v[1] - 7) * 0.1, (v[2] - 4.2) * 0.1] : po ? (v) => [v[0], v[1], v[2] >= 1.0 ? v[2] + po : v[2]] : (v) => v;
   const box = (a, b, t) => { const p = tf(a), q = tf(b); addBox(mb, [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.min(p[2], q[2])], [Math.max(p[0], q[0]), Math.max(p[1], q[1]), Math.max(p[2], q[2])], typeof t === 'string' ? [t, t, t, t, t, t] : t); };
   if (mode === 'straps') {
     // just the shoulder straps, for looking down at yourself in first person
-    for (const sx of [-2.3, 2.3]) box([sx - 0.6, 3.6, -2.32], [sx + 0.6, 12.25, -2.02], 'pack_strap');
+    for (const sx of [-2.3, 2.3]) box([sx - 0.6, 3.6, fz], [sx + 0.6, 12.25 + lift, fz + 0.3], 'pack_strap');
     return;
   }
   const w = 3.5 + big * 0.3, top = 10.5 + big * 0.4, d = 5.2 + big * 0.4;
@@ -259,15 +262,16 @@ function buildPack3D(mb, key, mode, gear = '') {
   if (big) for (const yy of [3.2, 8.0]) box([-w - 0.12, yy, 1.95], [w + 0.12, yy + 0.6, d + 0.1], 'pack_iron');   // iron bands
   if (mode === 'worn') {
     for (const sx of [-2.3, 2.3]) {
-      box([sx - 0.6, 11.95, -2.3], [sx + 0.6, 12.3, 2.0], 'pack_strap');                      // over the shoulder
-      box([sx - 0.6, 3.6, -2.32], [sx + 0.6, 12.3, -2.02], 'pack_strap');                    // down the chest
+      box([sx - 0.6, 11.95 + lift, fz + 0.02], [sx + 0.6, 12.3 + lift, 2.0], 'pack_strap');   // over the shoulder
+      box([sx - 0.6, 3.6, fz], [sx + 0.6, 12.3 + lift, fz + 0.3], 'pack_strap');             // down the chest
+      if (po) box([sx - 0.6, 10.4, 1.7], [sx + 0.6, 12.3 + lift, 2.0], 'pack_strap');         // and down the back to the bag
     }
-    box([-3.6, 3.4, -2.36], [3.6, 3.9, -2.06], 'pack_strap');                                 // a waist strap
+    box([-3.6, 3.4, fz - 0.04], [3.6, 3.9, fz + 0.26], 'pack_strap');                         // a waist strap
   } else {
     for (const sx of [-2.3, 2.3]) box([sx - 0.6, 3.0, 1.6], [sx + 0.6, 11.0, 2.0], 'pack_strap');   // the straps, loose
   }
 }
-function packMesh(gl, key, mode, gear = '') { return item3dMesh(gl, '__pack_' + key + '_' + mode + (gear ? '_' + gear : ''), mb => buildPack3D(mb, key, mode, gear), 'block'); }
+function packMesh(gl, key, mode, gear = '', ov = null) { const ok = ov ? '_o' + [ov.po || 0, ov.lift || 0, ov.fz != null ? ov.fz : ''].map(v => typeof v === 'number' ? v.toFixed(2) : v).join(',') : ''; return item3dMesh(gl, '__pack_' + key + '_' + mode + (gear ? '_' + gear : '') + ok, mb => buildPack3D(mb, key, mode, gear, ov), 'block'); }
 {
   const base = itemMesh;
   itemMesh = function (gl, key) {

@@ -143,13 +143,14 @@ function campRestTriggers(g, kind) {
   campDo = function (g, fx, lp, ctx = {}) {
     if (!fx) return;
     const list = Array.isArray(fx) ? fx : [fx];
+    const clears = [];
     if (!g.isGuest) {
       for (const e of list) {
         if (!e || (e.if && !campTest(g, e.if, lp))) continue;
         try {
           if (e.milestone) campMilestone(g, e.milestone, e.why);
           if (e.reveal) { const S = campState(g); for (const k of [].concat(e.reveal)) S.known[k] = 1; for (const l of g.locals) l.toast('Your map is marked with new places', 'good'); }
-          if (e.clear) campClearPlace(g, e.clear);
+          if (e.clear) clears.push(e.clear);   // (alpha 7) after the rest, so a flag set beside it is seen by onClear
           if (e.attune) campAttuneAll(g, e.attune);
           if (e.unknown) { const S = campState(g); delete S.known[e.unknown]; }
           if (e.hurt) campHurtParty(g, e.hurt, e.type || 'psychic', e.why);
@@ -161,7 +162,9 @@ function campRestTriggers(g, kind) {
       // a story beat on a guest's screen is everyone's story beat
       for (const e of list) if (e && e.narrate && (!e.if || campTest(g, e.if, lp)) && g.net) { const nonce = ++CX_RT.nonce + Math.random(); CX_RT.mine = nonce; g.net.send({ t: 'adv', k: 'campnarrall', pages: [].concat(e.narrate), title: e.title || null, nonce }); }
     }
-    return baseDo(g, fx, lp, ctx);
+    const r = baseDo(g, fx, lp, ctx);
+    for (const pid of clears) { try { campClearPlace(g, pid); } catch (err) { console.warn('campaign clear', pid, err); } }
+    return r;
   };
   const baseObj = campObjDone;
   campObjDone = function (g, qid, R, st) {

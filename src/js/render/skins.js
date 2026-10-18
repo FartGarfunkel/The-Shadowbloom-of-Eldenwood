@@ -652,7 +652,7 @@ function avatarDraws(out, gl, skin, pose) {
       // worn under a backpack: it stays on your back, the pack's straps over it, and the hem below the pack swings
       const up = capeSegMesh(gl, pose.cape, 0, 11, 0.5), lo = capeSegMesh(gl, pose.cape, 11, 16, 0.5);
       const m = Mat4.create(); m.set(bodyM);
-      Mat4.translate(m, 0, 12 * PX, 2.03 * PX);
+      Mat4.translate(m, 0, 12 * PX, (pose.packOver && pose.packOver.capeZ ? pose.packOver.capeZ : 2.03) * PX);
       out.push(at(m, { mesh: up, noCull: true, tint: pose.tint }));
       const m2 = Mat4.create(); m2.set(m);
       Mat4.translate(m2, 0, -11 * PX, 0);
@@ -696,14 +696,14 @@ function avatarDraws(out, gl, skin, pose) {
     const pk = PACK_LOOK[pose.back] ? pose.back : 'leather_backpack';
     const m = Mat4.create(); m.set(bodyM); Mat4.scale(m, PX, PX, PX);
     if (!fp) Mat4.rotateX(m, Math.sin(pose.walk * 2) * 0.02 * pose.walkAmt);
-    out.push(at(m, { mesh: packMesh(gl, pk, fp ? 'straps' : 'worn', fp ? '' : (pose.gear || '')).mesh, noCull: true }));
+    out.push(at(m, { mesh: packMesh(gl, pk, fp ? 'straps' : 'worn', fp ? '' : (pose.gear || ''), pose.packOver || null).mesh, noCull: true }));
   }
   if (bodyM && pose.hook && (!fp || (fpTorso && !pose.back))) {
     // hangs from the backpack's side if one is worn, otherwise from the front of the belt
     const im = itemMesh(gl, pose.hook);
     const m = Mat4.create(); m.set(bodyM);
     const walk = Math.sin(pose.walk * 2) * pose.walkAmt, sway = walk * 0.3;
-    if (pose.back) Mat4.translate(m, 5.3 * PX, 6.6 * PX, 3.7 * PX); else Mat4.translate(m, 2.6 * PX, 0.4 * PX, -2.5 * PX);
+    if (pose.back) Mat4.translate(m, 5.3 * PX, 6.6 * PX, (3.7 + (pose.packOver ? pose.packOver.po || 0 : 0)) * PX); else Mat4.translate(m, 2.6 * PX, 0.4 * PX, -2.5 * PX);
     Mat4.rotateX(m, sway); Mat4.rotateZ(m, walk * 0.12);
     if (im.kind === 'block') {
       // the placed lantern (or torch), hanging by its handle: its top just under the hook

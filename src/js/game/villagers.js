@@ -1302,7 +1302,7 @@ Object.assign(LocalPlayer.prototype, {
         else { const q = npcQuestFor(g, v, e.npc.i); if (q && !S.qdone[q.id]) mark = '!'; }
       }
       if (d > 8 && !mark) continue;
-      const s = this.project(e.x, e.y + (e.npc.p & NPC_P.sleep ? 0.9 : 2.15), e.z, cam);
+      const s = this.project(e.x, e.y + (e.npc.p & NPC_P.sleep ? 0.9 : (typeof avatarTopOf === 'function' ? avatarTopOf(npcSkin(g.renderer.gl, e.npc.s, e.npc.j), 2.15) : 2.15)), e.z, cam);
       if (s) list.push([s, d <= 8 ? e.npc.n : '', d <= 8 ? (NPC_JOBS[e.npc.j] || NPC_JOBS.none).title : '', mark]);
     }
     while (box.children.length < list.length) { const d = document.createElement('div'); d.className = 'npc-tag'; box.appendChild(d); }

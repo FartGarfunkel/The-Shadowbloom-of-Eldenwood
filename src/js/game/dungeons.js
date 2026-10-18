@@ -77,13 +77,16 @@ WorldGen.prototype.planDungeon = function (rx, rz, F) {
   const S = DGRID * DCELL;
   let ox = rx * DREG + 40 + Math.floor(rnd() * (DREG - 80 - S)), oz = rz * DREG + 40 + Math.floor(rnd() * (DREG - 80 - S));
   if (F) { ox = Math.round(F.x - S / 2); oz = Math.round(F.z - S / 2); }
+  // (alpha 7) a campaign dungeon can say exactly where its way in is (a hatch in a tavern floor): the first room sits
+  // under it and the rest spread out from there
+  if (F && F.ent) { ox = Math.round(F.ent[0]) - 7; oz = Math.round(F.ent[1]) - 7; }
   // keep clear of villages (and of the campaign's own places)
   if (!F && this.villagesNear && this.villagesNear(ox + S / 2, oz + S / 2, 40).length) return null;
   if (!F && this.campaignPlacesNear && this.campaignPlacesNear(ox + S / 2, oz + S / 2, 70)) return null;
   const deep = F ? !!F.deep : rnd() < 0.3;
   const theme = (F && F.theme && DTHEME[F.theme]) ? F.theme : deep ? 'hollow' : rnd() < 0.35 ? 'nest' : 'crypt';
   // the rooms: a random walk over a 4x4 grid from the entrance
-  const start = [Math.floor(rnd() * DGRID), Math.floor(rnd() * DGRID)];
+  const start = F && F.ent ? [0, 0] : [Math.floor(rnd() * DGRID), Math.floor(rnd() * DGRID)];
   const cells = new Map(), edges = [];
   const ck = (a, b) => a + ',' + b;
   cells.set(ck(...start), { gx: start[0], gz: start[1], d: 0 });
@@ -120,7 +123,7 @@ WorldGen.prototype.planDungeon = function (rx, rz, F) {
   const plan = { id, rx, rz, theme, th, x0: ox - 3, z0: oz - 3, x1: ox + S + 3, z1: oz + S + 3, y, rooms, corridors, ent, surf, seed: hash32(this.seed, rx, rz, 5152),
     boss: { at: [boss.x, boss.y, boss.z], type: (F && F.boss) || th.bosses[Math.floor(rnd() * th.bosses.length)] },
     spawners: rooms.filter(r => r.kind === 'spawner').map(r => { const mobs = (F && F.mobs && F.mobs.length) ? F.mobs : th.mobs; return { at: [r.x, r.y, r.z], mob: mobs[Math.floor(rnd() * mobs.length)] }; }),
-    x: ox + S / 2, z: oz + S / 2, name: (F && F.name) || th.name, place: F ? F.place : null };
+    x: ox + S / 2, z: oz + S / 2, name: (F && F.name) || th.name, place: F ? F.place : null, noShrine: !!(F && F.noShrine) };
   return plan;
 };
 
@@ -152,7 +155,7 @@ WorldGen.prototype.buildDungeonInto = function (ch, d) {
   for (const [x0, y0, z0, x1, y1, z1] of spaces) {
     for (let z = z0 - 1; z <= z1 + 1; z++) for (let x = x0 - 1; x <= x1 + 1; x++) {
       if (!inC(x, z)) continue;
-      for (let y = y0 - 1; y <= y1 + 1; y++) { if (y > d.surf - 2 && x === ex && z === ez) continue; put(x, y, z, wall(x, y, z)); }
+      for (let y = y0 - 1; y <= y1 + 1; y++) { if (y > d.surf - 2 && x === ex && z === ez) continue; if (d.noShrine && y >= d.surf) continue; put(x, y, z, wall(x, y, z)); }
     }
   }
   for (const [x0, y0, z0, x1, y1, z1] of spaces) {
@@ -164,7 +167,7 @@ WorldGen.prototype.buildDungeonInto = function (ch, d) {
   }
   // the ladder up the shaft (on its north wall) and the ruined shrine around the top
   for (let y = d.y; y <= d.surf; y++) put(ex, y, ez, 'ladder', 2);
-  for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+  if (!d.noShrine) for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
     const x = ex + dx, z = ez + dz;
     if (!inC(x, z)) continue;
     const h = this.column(x, z).h, edge = Math.max(Math.abs(dx), Math.abs(dz)) === 3, mid = Math.max(Math.abs(dx), Math.abs(dz)) <= 1;
@@ -174,7 +177,7 @@ WorldGen.prototype.buildDungeonInto = function (ch, d) {
     if (edge) { const tall = Math.floor(hashFloat(x, z, d.seed, 8) * 4); for (let y = h + 1; y <= h + tall; y++) put(x, y, z, wall(x, y, z)); for (let y = h + tall + 1; y <= h + 4; y++) if (get(x, y, z) > 0 && !T_SOLID[get(x, y, z)]) put(x, y, z, 0); }
     else for (let y = h + 1; y <= h + 3; y++) if (get(x, y, z) > 0 && (!T_SOLID[get(x, y, z)] || /leaves|log/.test(BLOCKS[get(x, y, z)].key))) put(x, y, z, 0);
   }
-  { const h = this.column(ex, ez).h; put(ex + 1, h + 1, ez - 1, th.light === 'soul_torch' ? 'soul_lantern' : 'lantern'); }
+  if (!d.noShrine) { const h = this.column(ex, ez).h; put(ex + 1, h + 1, ez - 1, th.light === 'soul_torch' ? 'soul_lantern' : 'lantern'); }
   // the rooms' furnishings
   for (const r of d.rooms) {
     const rr = mulberry32(r.seed);

@@ -746,8 +746,14 @@ function gearDraws(out, n0, gl, skin, pose, L) {
       const t = pose.time || 0, wa = pose.walkAmt || 0;
       const capeA = pose.capeA ?? (0.1 + wa * (pose.sprint ? 0.8 : 0.45) + (pose.sit ? 0.35 : 0));
       const sway = pose.capeSway || Math.sin(t * 2.3) * 0.035 * (1 - wa);
-      F.cape = mk(B); Mat4.translate(F.cape, 0, 12 * PX, (2.4 + (pose.back ? 5 : 0)) * PX); Mat4.rotateX(F.cape, -capeA * 0.55); if (sway) Mat4.rotateZ(F.cape, sway);
-      F.capeLo = mk(F.cape); Mat4.translate(F.capeLo, 0, -11 * PX, 0); Mat4.rotateX(F.capeLo, -capeA * 0.6 - Math.sin(t * 3.1) * 0.03 * wa); if (sway) Mat4.rotateZ(F.capeLo, sway * 0.6);
+      if (pose.back) {
+        // (alpha 7) under a backpack: the cloak lies on the back beneath it, and only the hem below the pack swings
+        F.cape = mk(B); Mat4.translate(F.cape, 0, 12 * PX, 2.4 * PX); Mat4.rotateX(F.cape, -0.02);
+        F.capeLo = mk(F.cape); Mat4.translate(F.capeLo, 0, -11 * PX, 0); Mat4.rotateX(F.capeLo, -capeA * 0.95 - Math.sin(t * 3.1) * 0.03 * wa); if (sway) Mat4.rotateZ(F.capeLo, sway * 0.8);
+      } else {
+        F.cape = mk(B); Mat4.translate(F.cape, 0, 12 * PX, 2.4 * PX); Mat4.rotateX(F.cape, -capeA * 0.55); if (sway) Mat4.rotateZ(F.cape, sway);
+        F.capeLo = mk(F.cape); Mat4.translate(F.capeLo, 0, -11 * PX, 0); Mat4.rotateX(F.capeLo, -capeA * 0.6 - Math.sin(t * 3.1) * 0.03 * wa); if (sway) Mat4.rotateZ(F.capeLo, sway * 0.6);
+      }
     }
     if (L.tail && !fp) { const t = pose.time || 0; F.tail = mk(B); Mat4.translate(F.tail, 0, 0, 2 * PX); Mat4.rotateY(F.tail, Math.sin(t * 1.6) * 0.3); Mat4.rotateX(F.tail, 0.08 + Math.sin(t * 1.1) * 0.06); }
     const meshes = gearLookMeshes(gl, L, aw, !!helm && !hatItem, !!chest), tex = gearLookTex(gl, L);
@@ -771,12 +777,79 @@ function gearDraws(out, n0, gl, skin, pose, L) {
     if (!skin || !skin.ready || !skin.parts || !pose) return baseDraws(out, gl, skin, pose);
     const L = gearLookOf(skin);
     if (L && L.helmHide && pose.armor && pose.armor[0]) { pose = Object.assign({}, pose, { armor: pose.armor.slice() }); pose.armor[0] = null; }
+    // (alpha 7) a backpack goes on over whatever is worn: robes, a cloak, a cape, armour
+    if (pose.back && !pose.packOver) { const ov = gearPackOver(L, pose); if (ov) pose = Object.assign({}, pose, { packOver: ov }); }
     const n0 = out.length;
     baseDraws(out, gl, skin, pose);
     if (pose.invis || window.__gearOff) return;
     try { gearDraws(out, n0, gl, skin, pose, L); }
     catch (e) { if (!gearDraws.warned) { gearDraws.warned = true; console.warn('gear', e); } }
+    // (alpha 7) the peoples stand at their own heights: everything drawn for this figure, scaled about the feet
+    try { const st = gearStature(L); if (st) gearScaleDraws(out, n0, st, pose); } catch (e) { /* drawn at a human's height */ }
   };
+}
+// How tall each people stands beside a human, and how broad: [height, breadth]. Halflings and gnomes come up to a human's
+// chest, dwarves to the shoulder (and are as broad as anyone), goliaths tower. Only how they look and where their eyes are:
+// everyone fits through the same doors.
+const GEAR_STATURE = { human: [1, 1], elf: [1.03, 0.95], dwarf: [0.78, 0.98], halfling: [0.6, 0.66], gnome: [0.57, 0.62], dragonborn: [1.1, 1.08], orc: [1.06, 1.07], tiefling: [1, 1],
+  goliath: [1.24, 1.16], sunmane: [1.05, 1.02], kestrin: [0.96, 0.92], mossborn: [1.08, 1.07], lumini: [0.97, 0.95], tidecursed: [1, 1], veilborn: [1.01, 0.96] };
+function gearStature(L) {
+  const st = L && GEAR_STATURE[L.species];
+  return st && (st[0] !== 1 || st[1] !== 1) ? st : null;
+}
+function speciesStature(id) { return GEAR_STATURE[id] || [1, 1]; }
+// your eyes are where your head is (a tall one's no higher than fits under a two-block ceiling)
+const GEAR_EYE_CAP = 1.72;
+function gearScaleDraws(out, n0, st, pose) {
+  let sy = st[0], sx = st[1];
+  // first person: the body sits under your eyes, and a tall one's eyes stop at the cap
+  if (pose.fp && sy > GEAR_EYE_CAP / 1.62) { const k = (GEAR_EYE_CAP / 1.62) / sy; sy *= k; sx *= k; }
+  if (sy === 1 && sx === 1) return;
+  // seated (a saddle, a bench), shrunk about the hips so they stay on the seat; otherwise about the feet
+  const py = pose.sit ? 0.75 : 0;
+  const S = new Float32Array([sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sx, 0, 0, py * (1 - sy), 0, 1]);
+  const done = new Map();
+  for (let i = n0; i < out.length; i++) {
+    const d = out[i], m = d.m; if (!m) continue;
+    let r = done.get(m);
+    if (!r) { r = Mat4.create(); Mat4.multiply(r, S, m); done.set(m, r); }
+    d.m = r;
+  }
+}
+// how high over the feet the top of a figure's head is (for the name over it)
+function avatarTopOf(skin, base = 2.1) {
+  try { const st = gearStature(gearLookOf(skin)); return st ? 0.2 + (base - 0.2) * st[0] : base; } catch (e) { return base; }
+}
+{
+  // and your eyes, in first person, at your own height
+  const baseMove = Player.prototype.move;
+  Player.prototype.move = function (...a) {
+    const r = baseMove.apply(this, a);
+    const c = this.stats && this.stats.dnd, st = c && GEAR_STATURE[c.species];
+    if (st && st[0] !== 1 && this.eye !== this._eyeSet) { this.eye = Math.min(GEAR_EYE_CAP, this.eye * st[0]); this._eyeSet = this.eye; }
+    return r;
+  };
+}
+
+// How a backpack sits over what's worn under it (render/items3d.js buildPack3D): po, how far further out from the back;
+// lift, how much higher the straps come over the shoulders; fz, where they lie down the chest; capeZ, where a cape's top
+// lies on the back beneath it. Nothing worn: nothing changes.
+const GEAR_PACK_SH = { vestments: 0.75, leafrobe: 0.95, ranger: 0.85, shadow: 0.85, traveller: 0.65, furs: 1.45, noble: 1.15, archrobe: 0.35, pact: 0.35, silks: 0.35 };
+function gearPackOver(L, pose) {
+  const AR = pose.armor || [], chestId = AR[1] && String(AR[1]).split('#')[0];
+  const chest = chestId && !(typeof packArmorWorn === 'function' && packArmorWorn(AR[1])) ? armorMat(chestId) : null;
+  const cls = chest ? gearArmorClass(chest) : null, helm = AR[0] && String(AR[0]).split('#')[0], hd = helm && itemDef(helm);
+  const coif = helm && !(hd && hd.hat) && gearArmorClass(armorMat(helm)) === 'mail';
+  const dressed = !!(L && (L.outfit || L.robe || L.tabard || L.apron));
+  let po = 0, lift = 0, fz = null;
+  if (dressed) { po = L.robe || L.outfit === 'furs' ? 1.2 : 1.0; lift = GEAR_PACK_SH[L.outfit] || 0; fz = -3.0; }
+  if (chest) { po = Math.max(po, 1.0); lift = Math.max(lift, cls === 'plate' ? 1.1 : 0.45); fz = -3.0; }
+  if (coif) lift = Math.max(lift, 0.95);
+  let capeZ = null;
+  if (pose.cape) { capeZ = 2.03 + (po ? po - 0.25 : 0); po = capeZ + 0.55 - 2.0; }
+  else if (L && L.cloak) { po = Math.max(po, 1.75); lift = Math.max(lift, 1.1); if (fz == null) fz = -2.95; }
+  if (!po && !lift && fz == null) return null;
+  return { po: Math.round(po * 100) / 100, lift: Math.round(lift * 100) / 100, fz, capeZ };
 }
 
 // ---- the resource pack wears too: its chainmail, and its armour for the tabletop's kinds ------------------------------
@@ -818,6 +891,7 @@ function gearCSS(root, L, S0, aw) {
   const to = { head: 'head', neck: 'head', body: 'body', skirtF: 'body', skirtB: 'body', cape: 'body', capeLo: 'body', tail: 'body', armR: 'armR', foreR: 'armR', armL: 'armL', foreL: 'armL', legR: 'legR', shinR: 'legR', legL: 'legL', shinL: 'legL' };
   const cv = gearPaint(L), url = cv.toDataURL();
   const S = gearShapes(L, aw, false, false);
+  { const st = gearStature(L); if (st) { root.style.transformOrigin = `0px ${12 * S0}px`; root.style.scale = `${st[1]} ${st[0]} ${st[1]}`; } else root.style.scale = ''; }
   // in the menu the cape hangs a little out behind, as if in a breeze
   const lean = (p, pv, a) => { const y = p[1] - pv[1], z = p[2] - pv[2], c = Math.cos(a), s = Math.sin(a); return [p[0], pv[1] + y * c - z * s, pv[2] + y * s + z * c]; };
   S.forEach((s, si) => {

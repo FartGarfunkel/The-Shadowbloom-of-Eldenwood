@@ -166,7 +166,16 @@ WorldGen.prototype.campaignDungeonAt = function (rx, rz) {
   for (const [id, P] of Object.entries(C.places)) {
     if (P.kind !== 'dungeon') continue;
     const [x, z] = P.at;
-    if (Math.floor(x / DREG) === rx && Math.floor(z / DREG) === rz) return { x, z, theme: P.theme, boss: P.boss, mobs: P.mobs, name: P.name, rooms: P.rooms, deep: P.deep, place: id };
+    if (Math.floor(x / DREG) === rx && Math.floor(z / DREG) === rz) {
+      // (alpha 7) a way in under a building of a town: the middle of its floor (the same spot whichever way it faces)
+      let ent = null;
+      if (P.entBld && !CAMP_RT._entBusy) {
+        CAMP_RT._entBusy = true;
+        try { const v = campTownPlan(this, P.entBld.town), b = v && v.blds.find(q => (q.sign || []).join(' ') === P.entBld.sign); if (b) ent = [b.x0 + Math.floor((b.W - 1) / 2), b.z0 + Math.floor((b.D - 1) / 2), b.y]; }
+        finally { CAMP_RT._entBusy = false; }
+      }
+      return { x, z, theme: P.theme, boss: P.boss, mobs: P.mobs, name: P.name, rooms: P.rooms, deep: P.deep, place: id, ent, noShrine: !!P.entBld };
+    }
   }
   return null;
 };
