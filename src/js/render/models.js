@@ -293,7 +293,7 @@ function renderBlockIcons(renderer) {
   gl.bindVertexArray(null);
   // rows come back bottom-up: flip into a canvas, then copy each icon into the sheet
   const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H;
-  const tg = tmp.getContext('2d'), img = tg.createImageData(W, H);
+  const tg = tmp.getContext('2d', { willReadFrequently: true }), img = tg.createImageData(W, H);
   for (let y = 0; y < H; y++) img.data.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), y * W * 4);
   tg.putImageData(img, 0, 0);
   const g = ICONS.canvas.getContext('2d');
@@ -303,7 +303,7 @@ function renderBlockIcons(renderer) {
     g.clearRect(ox, oy, S, S);
     g.drawImage(tmp, cx * S, H - (cy + 1) * S, S, S, ox, oy, S, S);
   });
-  ICONS.url = ICONS.canvas.toDataURL();
+  ICONS.dirty = true;
 }
 
 // Flat sprite with 1/16-thick pixel edges, centred on the origin (x,y in -0.5..0.5).

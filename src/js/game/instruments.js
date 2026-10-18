@@ -118,6 +118,7 @@ function paintInstrumentFrames() {
       const d = ((want - I.compassA) % TAU + TAU * 1.5) % TAU - Math.PI;
       I.compassV += d * dt * 40; I.compassV *= Math.max(0, 1 - dt * 6); I.compassA += I.compassV * dt;
     }
+    if (!Number.isFinite(I.compassA) || !Number.isFinite(I.compassV)) { I.compassA = 0; I.compassV = 0; }   // (alpha 4) a NaN needle stayed NaN
     I.compassF = ((Math.round(I.compassA / TAU * COMPASS_FRAMES) % COMPASS_FRAMES) + COMPASS_FRAMES) % COMPASS_FRAMES;
     // the death compass: the same needle, drawn to your grave (and lost when there's none in this world)
     const gr = p && this.inWorld() ? p.grave : null;
@@ -127,6 +128,7 @@ function paintInstrumentFrames() {
       const d = ((-rel - I.deathA) % TAU + TAU * 1.5) % TAU - Math.PI;
       I.deathV += d * dt * 40; I.deathV *= Math.max(0, 1 - dt * 6); I.deathA += I.deathV * dt;
     } else I.deathA += dt * (4 + Math.sin(this.time * 1.3) * 3);
+    if (!Number.isFinite(I.deathA) || !Number.isFinite(I.deathV)) { I.deathA = 0; I.deathV = 0; }
     I.deathF = ((Math.round(I.deathA / TAU * COMPASS_FRAMES) % COMPASS_FRAMES) + COMPASS_FRAMES) % COMPASS_FRAMES;
     if (this.meta && this.dim === DIM.OVERWORLD) I.clockF = Math.floor(((this.meta.time % DAY_LEN) / DAY_LEN) * CLOCK_FRAMES) % CLOCK_FRAMES;
     else I.clockF = Math.floor(this.time * 20) % CLOCK_FRAMES;

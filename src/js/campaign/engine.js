@@ -194,9 +194,23 @@ function campDungeon(g, placeId) {
       if (C.start.offset) { x += C.start.offset[0]; z += C.start.offset[1]; }
       const v = C.start.town ? campTownVillage(this, C.start.town) : null;
       if (v && !C.start.offset && v.roads && v.roads.length) {
-        const r = v.roads[(C.start.road || 0) % v.roads.length], c = r.cells[r.cells.length - 4] || r.cells[0]; x = c[0]; z = c[1];
-        // outside the walls, on the road in
-        if (C.start.outside) { const e = r.cells[r.cells.length - 2] || c; x = v.x + DXL[r.d] * (r.L + C.start.outside); z = v.z + DZL[r.d] * (r.L + C.start.outside); void e; }
+        // (alpha 4) the road the story names, unless the land outside that gate is a cliff or a mountainside (the
+        // terrain differs by seed): then the next road out whose ground is level with the town
+        const gen = this.world.gen, townH = gen.column(Math.floor(v.x), Math.floor(v.z)).h;
+        const spot = (r) => {
+          const c = r.cells[r.cells.length - 4] || r.cells[0];
+          if (!C.start.outside) return [c[0], c[1]];
+          return [v.x + DXL[r.d] * (r.L + C.start.outside), v.z + DZL[r.d] * (r.L + C.start.outside)];
+        };
+        const n = v.roads.length, first = (C.start.road || 0) % n;
+        let best = null, bestD = Infinity;
+        for (let k = 0; k < n; k++) {
+          const r = v.roads[(first + k) % n], [sx, sz] = spot(r);
+          let d = 0; for (let t = 0; t <= 4; t++) { const f = t / 4, px = v.x + (sx - v.x) * (0.8 + 0.2 * f), pz = v.z + (sz - v.z) * (0.8 + 0.2 * f); d = Math.max(d, Math.abs(gen.column(Math.floor(px), Math.floor(pz)).h - townH)); }
+          if (d <= 4) { best = [sx, sz]; break; }
+          if (d < bestD) { bestD = d; best = [sx, sz]; }
+        }
+        if (best) [x, z] = best;
       }
       const h = this.world.gen.column(Math.floor(x), Math.floor(z)).h;
       this.meta.spawn = [Math.floor(x) + 0.5, Math.max(h, SEA) + 1, Math.floor(z) + 0.5];
@@ -832,6 +846,10 @@ function campFill(talk, text) {
 // ---- narration: the storyteller's voice, over everyone's screens -----------------------------------------------------
 function campNarrate(g, pages, title, then) {
   if (!pages || !pages.length) { if (then) then(); return; }
+  // (alpha 4) one at a time: a second story beat used to replace the one being read, and whatever was to follow the
+  // first (a choice, the next scene) never came. Now it waits its turn.
+  const cur = CAMP_RT.narrating;
+  if (cur && cur.el && cur.el.isConnected) { (CAMP_RT.queue || (CAMP_RT.queue = [])).push([g, pages, title, then]); return; }
   const host = document.getElementById('app') || document.body;
   const old = document.querySelector('.camp-narr'); if (old) old.remove();
   const el = document.createElement('div'); el.className = 'camp-narr';
@@ -845,10 +863,19 @@ function campNarrate(g, pages, title, then) {
     T.innerHTML = String(txt).split(/\n\n+/).map(p => `<p>${esc(p)}</p>`).join('');
     T.classList.remove('in'); void T.offsetWidth; T.classList.add('in');
     N.textContent = pages.length > 1 ? `${i + 1} / ${pages.length}` : '';
-    btn.textContent = i < pages.length - 1 ? 'Continue' : 'Begin';
+    // (alpha 4) "Begin" only for the tale's opening; later story beats just go on
+    let begun = false; try { const S = campState(g); begun = !!(S && (S.ended || Object.keys(S.quests || {}).length > 1)); } catch (e) { /* no story yet */ }
+    btn.textContent = i < pages.length - 1 ? 'Continue' : begun ? 'Continue' : 'Begin';
   };
   const next = () => { i++; if (i >= pages.length) { finish(); return; } show(); };
-  const finish = () => { el.remove(); window.removeEventListener('keydown', key, true); CAMP_RT.narrating = null; if (then) then(); };
+  const finish = () => {
+    if (!el.isConnected && CAMP_RT.narrating && CAMP_RT.narrating.el !== el) { window.removeEventListener('keydown', key, true); return; }
+    el.remove(); window.removeEventListener('keydown', key, true); CAMP_RT.narrating = null;
+    try { if (then) then(); } finally {
+      const q = CAMP_RT.queue && CAMP_RT.queue.shift();
+      if (q) setTimeout(() => { if (q[0] === GAME && GAME.meta) campNarrate(...q); }, 250);
+    }
+  };
   const key = (e) => { if (['Enter', 'Space', 'KeyE', 'Escape'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); if (e.code === 'Escape') finish(); else next(); } };
   btn.onclick = () => { if (g.sfx) g.sfx.play('click'); next(); };
   el.addEventListener('pointerdown', (e) => e.stopPropagation());

@@ -1,6 +1,6 @@
 # The Shadowbloom of Eldenwood
 
-**Current version:** Alpha 0.1.0.3
+**Current version:** Alpha 0.1.0.4
 **Status:** Alpha. The whole campaign is in and ready to play from start to finish, but things will change and you may meet a bug or two.
 
 ![A party of heroes in the square at Stonebridge](screenshots/heroes.png)
@@ -18,11 +18,12 @@ Play it alone, or bring the whole party: up to four players on one screen, or fr
 ## Features
 
 - **A real campaign:** a full story from the first letter to the last page, with named people who remember you, conversations where your skills open doors, side quests, letters and dreams, a journal that keeps track of it all, and choices that matter at the end.
-- **Make your hero, the Hytale way:** your hero stands on the main menu, and you make them before you make a world. Nine species (human, elf, dwarf, halfling, gnome, dragonborn, orc, tiefling, goliath), twelve classes and ten backgrounds, each class with its starting kit.
+- **Make your hero, the Hytale way:** your hero stands on the main menu, and you make them before you make a world. Fifteen species (the nine of the rulebook, and six from Eldenwood's own lands), twelve classes with three subclasses each, and fourteen backgrounds, each class with its starting kit.
 - **Heroes and townsfolk in 3D:** sculpted hair, beards (all the way down to a proper wizard's beard), hats, hoods, robes that swing as you walk, cloaks that stream out behind you, horns, tails and pointed ears. Armour grows pauldrons, crests and plates, and you can keep your helmet off your head if you'd rather show your face.
 - **Live-action combat:** swing, shoot and cast in real time. Nothing is rolled on screen: a blow that lands, lands, and your skill and their armour decide how hard. Spells, class features (Rage, Second Wind, Lay on Hands, Wild Shape and more) and species gifts like a dragonborn's breath are a key away. Fights get messy, too: limbs can come off.
 - **RPG towns:** Stonebridge is a walled city of side streets and squares; the towns and villages around it each have their own character. Step inside and the detail is there: potions and herbs on the apothecary's shelves, books in the library, weapons on racks and armour on stands at the smithy, and townsfolk eating and drinking at the tavern tables.
-- **Levels and spells:** grow from level 1 to 20, with 69 spells from cantrips upward, spell slots, short and long rests, and new features as you go.
+- **The whole rulebook:** grow from level 1 to 20 with every SRD 5.2 spell, weapon, armour and magic item, feats, multiclassing, spells you choose and prepare yourself, short and long rests, and conditions shown on the HUD.
+- **A world to travel:** roads and signposts between every town and place of the story, walled towns whose gates shut at dusk, things that happen on the road (and signs of them before they do), traps and locked chests in the dungeons, horses at the stables, a smith who'll temper and silver your weapon, sellswords at the inn and a house of your own.
 - **Controller or keyboard and mouse:** every menu, the hero maker, conversations, the journal, letters, shops and the inventory work with either.
 - **Play together:** split screen for **2 to 4 players** (keyboard and mouse or controllers), a world opened to your home network, online play, or a dedicated server. Everyone shares the same story.
 - **Made for GeruDoku:** one click in Settings fetches the classic **[GeruDoku](https://github.com/sybenx/GeruDoku)** resource pack from its own release page, and it covers the 3D armour and clothes too.

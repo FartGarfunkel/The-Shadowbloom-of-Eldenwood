@@ -158,7 +158,10 @@
 .jn-letter { display: block; width: 100%; text-align: left; margin-bottom: 4px; }
 .jn-empty { color: var(--muted); }
 .qt-camp-box .qt.camp.main b { color: #d8b8ff; }
-.qt.camp span { white-space: normal; text-align: right; max-width: 60%; }
+/* (alpha 4) the story's goals are sentences: the title above, the goal under it, both readable */
+.quest-track .qt.camp { flex-direction: column; gap: 1px; padding: 4px 9px 5px; }
+.quest-track .qt.camp b { white-space: normal; overflow: visible; font-size: 13px; letter-spacing: 0.02em; }
+.quest-track .qt.camp span { white-space: normal; text-align: left; max-width: none; font-family: inherit; font-size: 12px; line-height: 1.32; color: #ddd2bf; }
 .nt-check { color: var(--gold); font-weight: 700; }
 .nt-check.ok { color: #8fe38f; }
 .nt-check.no { color: #e8a070; }

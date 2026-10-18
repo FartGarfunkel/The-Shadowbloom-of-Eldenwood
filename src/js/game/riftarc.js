@@ -572,7 +572,7 @@ class RiftBolt extends Entity {
     this.age += dt; if (this.age > 3) { this.remove = true; return; }
     for (let s = 0; s < 3; s++) {
       this.x += this.vx * dt / 3; this.y += this.vy * dt / 3; this.z += this.vz * dt / 3;
-      for (const p of g.pawns()) if (!p.dead && Math.abs(p.x - this.x) < 0.5 && Math.abs(p.z - this.z) < 0.5 && this.y > p.y - 0.2 && this.y < p.y + 1.9) { p.hurt(5, { type: 'magic', attacker: this.owner, knock: 2 }); this.burst(); return; }
+      for (const p of g.pawns()) if (!p.dead && Math.abs(p.x - this.x) < 0.5 && Math.abs(p.z - this.z) < 0.5 && this.y > p.y - 0.2 && this.y < p.y + 1.9) { p.hurt((this.owner && this.owner.T && this.owner.T.boltDmg) || 5, { type: 'magic', attacker: this.owner, knock: 2 }); this.burst(); return; }
       if (T_SOLID[g.world.getBlock(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z))]) { this.burst(); return; }
     }
     spellFx(g, this.x, this.y, this.z, 'mana_arcane', 3, 0.3, { life: 0.4, size: 0.1 });
@@ -654,14 +654,14 @@ function riftSeal(g, boss) {
   };
   const baseSay = NpcTalk.prototype.say;
   NpcTalk.prototype.say = function (text) {
-    if (riftStability(this.g) < 15 && Math.random() < 0.18 && this.job !== 'elder') { text = ['He sees you through our eyes.', 'IT BREAKS. IT BREAKS. IT BREAKS.', 'Why did you open it?', 'There is no village. There never was.'][Math.floor(Math.random() * 4)]; this.g.sfx.play('rift_static'); }
+    if (!(this.g.meta && this.g.meta.campaign) && riftStability(this.g) < 15 && Math.random() < 0.18 && this.job !== 'elder') { text = ['He sees you through our eyes.', 'IT BREAKS. IT BREAKS. IT BREAKS.', 'Why did you open it?', 'There is no village. There never was.'][Math.floor(Math.random() * 4)]; this.g.sfx.play('rift_static'); }
     return baseSay.call(this, text);
   };
   const baseHud = questHud;
   questHud = function (lp) {
     baseHud(lp);
     const g = lp.g, R = g.meta && g.meta.rift;
-    if (!R || !R.stage || !lp.el) return;
+    if (!R || !R.stage || !lp.el || R.campaign || g.meta.campaign) return;   // (alpha 4) a campaign tells this part as its own quest
     let el = lp.el.querySelector('.quest-track');
     if (!el) { if (R.sealed) return; el = document.createElement('div'); el.className = 'quest-track'; lp.el.appendChild(el); }
     if (R.sealed && !(lp.player.stats && lp.player.stats.realmSeen === 1 && g.dim === DIM.REALM)) return;

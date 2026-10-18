@@ -276,3 +276,35 @@ Object.assign(SB.quests, {
     stages: { mill: { goal: 'Destroy what walks in the Sawtooth Mill, east of Oakhaven', obj: { clear: 'sawtooth_mill' }, at: 'sawtooth_mill', next: 'back' }, back: { goal: 'Tell Tobin at the mill', obj: { flag: '_never' }, at: 'tobin' } },
     reward: { xp: 450, gold: 30, items: [['spruce_log', 16]] } },
 });
+
+// ---- (alpha 3) Grom's forge, and the stables -------------------------------------------------------------------------------
+{
+  const G = SB.npcs.grom, N = G.talk && G.talk.nodes;
+  if (N) {
+    N.forge = { say: 'Upgrades, is it? (He wipes his hands.) Silver for the dead and the things that wear borrowed shapes. A proper temper for the edge. And if you bring me something that hums — a Leviathan scale, a cinder crystal — I can make the steel sing like Lyra\'s did.', opts: [
+      { t: 'Silver the weapon in my hand (40 gp)', do: [{ forge: 'silver', price: 40 }], go: 'forge' },
+      { t: 'Temper it to +1 (120 gp, 2 iron ingots)', do: [{ forge: 'temper', price: 120, max: 1, needs: [['iron_ingot', 2]] }], go: 'forge' },
+      { t: 'Temper it to +2 (300 gp, a Leviathan Scale)', if: { has: 'leviathan_scale' }, do: [{ forge: 'temper', price: 300, max: 2, needs: [['leviathan_scale', 1]] }], go: 'forge' },
+      { t: 'Temper it to +3 (800 gp, a Scourgestinger Barb and a Fang of the Beast)', if: { all: [{ has: 'stinger_barb' }, { has: 'beast_fang' }] }, do: [{ forge: 'temper', price: 800, max: 3, needs: [['stinger_barb', 1], ['beast_fang', 1]] }], go: 'forge' },
+      { t: 'Make it sing: resonance-bound (200 gp, a cinder crystal)', if: { has: 'cinder_crystal' }, do: [{ forge: 'resonant', price: 200, needs: [['cinder_crystal', 1]] }], go: 'forge' },
+      { t: 'That\'s all.', end: true }], bye: false };
+    // reach it from his first page
+    const st = N.start || N[Object.keys(N)[0]];
+    if (st && st.opts && !st.opts.some(o => o.go === 'forge')) st.opts.splice(Math.max(0, st.opts.length - 1), 0, { t: 'Can you work on my weapon?', go: 'forge' });
+  }
+}
+const SB_STABLE = (name, town, post, look, line, extra) => ({
+  name, title: 'Stablemaster', town, post, look: SB_LOOK(look.species || 'human', look),
+  about: 'Horses for the road, and a saddle to go with them.',
+  wares: [['saddle', 1, 20, 0], ['hay_bale', 4, 1, 0], ['apple', 6, 1, 0]],
+  talk: { start: 'start', nodes: { start: { say: line, opts: [
+    { t: 'Buy a riding horse, saddled (75 gp)', do: [{ mount: 'horse', price: 75 }], end: true },
+    ...(extra || []),
+    { t: 'Tack and feed.', shop: true }, { t: 'Just looking.', end: true }] } } },
+});
+Object.assign(SB.npcs, {
+  stable_sb: SB_STABLE('Harl Bridlewick', 'stonebridge', 'pen', { hair: 'short', hairCol: '#6a4a2a', beard: 'stubble', eyes: 'round', eyeCol: '#5a4a3a', mouth: 'plain', outfit: 'peasant', cols: ['#6a4a2a', '#c8b890', '#4a3a2a', '#2a1a10'] }, ['Welcome to the Bridle & Bit. The horses are restless lately. They feel something coming.', 'Need a mount? Best on the Blackroot.']),
+  stable_oak: SB_STABLE('Durna Oakenhum', 'oakhaven', 'pen', { species: 'dwarf', hair: 'braids', hairCol: '#a8582a', eyes: 'round', eyeCol: '#4a6a3a', mouth: 'smile', outfit: 'peasant', cols: ['#4a6a3a', '#c8b890', '#4a3a2a', '#2a1a10'] }, ['(She\'s singing to a chestnut mare, and doesn\'t stop when you come in.) The Chestnut Corral. They like a song. So do I.', 'Horses calm down when you sing. Most things do.'],
+    [{ t: 'Buy a mule for the hills (8 gp)', do: [{ mount: MOB_TYPES.donkey ? 'donkey' : 'horse', price: 8 }], end: true }]),
+  stable_red: SB_STABLE('Ozzan the Drover', 'redrock', 'house_s#0', { species: 'orc', hair: 'tail', hairCol: '#1a1a1a', tusks: true, eyes: 'narrow', eyeCol: '#c8a040', mouth: 'stern', outfit: 'ranger', cols: ['#a04a2a', '#d8b890', '#4a3a2a', '#2a1a10'] }, ['Camels I haven\'t got. Horses that don\'t mind sand, I have.', 'The Salt Road eats horses. Mine are tougher.']),
+});

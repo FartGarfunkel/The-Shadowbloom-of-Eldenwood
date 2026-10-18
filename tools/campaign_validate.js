@@ -6,7 +6,12 @@
   const item = (k) => !!H.ITEMS[k];
   const readObjs = [], setFlags = new Map(), testFlags = new Map(), startedQuests = new Set([C.firstQuest]), givenLetters = new Set(), clearFx = new Set(), endings = new Set();
   const note = (map, k, where) => { if (!map.has(k)) map.set(k, []); map.get(k).push(where); };
-  const FX_KEYS = new Set(['flag', 'unflag', 'quest', 'stage', 'complete', 'fail', 'give', 'take', 'gold', 'xp', 'letter', 'read', 'note', 'follow', 'stay', 'leave', 'back', 'narrate', 'toast', 'spawn', 'tp', 'heal', 'rest', 'rep', 'learn', 'end', 'weather', 'time', 'music', 'milestone', 'reveal', 'clear', 'attune', 'unknown', 'hurt', 'inspire', 'if', 'n', 'party', 'why', 'title', 'kind', 'type', 'at']);
+  const deferred = [];
+  // flags the game's code sets (campaign/watcher.js: entering his realm, his fall)
+  for (const f of ['realm_entered', 'watcher_fallen']) setFlags.set(f, ['code']);
+  const FX_KEYS = new Set(['flag', 'unflag', 'quest', 'stage', 'complete', 'fail', 'give', 'take', 'gold', 'xp', 'letter', 'read', 'note', 'follow', 'stay', 'leave', 'back', 'narrate', 'toast', 'spawn', 'tp', 'heal', 'rest', 'rep', 'learn', 'end', 'weather', 'time', 'music', 'milestone', 'reveal', 'clear', 'attune', 'unknown', 'hurt', 'inspire', 'if', 'n', 'party', 'why', 'title', 'kind', 'type', 'at',
+    // (alpha 3) effects handled by campaign/companions.js: houses, stables, Grom's forge
+    'house', 'price', 'mount', 'forge', 'needs', 'max', 'name']);
   const COND_KEYS = new Set(['any', 'all', 'flag', 'not', 'quest', 'done', 'notStarted', 'active', 'undone', 'stage', 'past', 'has', 'n', 'lacks', 'cls', 'species', 'met', 'cleared']);
   const placeOrTown = (k) => C.places[k] || C.towns[k];
   const refOk = (k) => Array.isArray(k) || placeOrTown(k) || C.npcs[k];
@@ -158,7 +163,7 @@
   // ---- quests ----
   for (const [qid, Q] of Object.entries(C.quests)) {
     const where = `quest ${qid}`;
-    if (!startedQuests.has(qid)) err(`${where}: never started`);
+    deferred.push(() => { if (!startedQuests.has(qid)) err(`${where}: never started`); });   // after the triggers, which start some
     const ks = Object.keys(Q.stages || {}); if (!ks.length) err(`${where}: no stages`);
     if (Q.first && !Q.stages[Q.first]) err(`${where}: first stage "${Q.first}" missing`);
     for (const [sid, st] of Object.entries(Q.stages)) {
@@ -199,6 +204,7 @@
   for (const k of Object.keys(C.letters)) if (!givenLetters.has(k)) warn(`letter ${k} is never given`);
   for (const [w, k] of readObjs) if (!givenLetters.has(k)) err(`${w}: letter "${k}" is never given`);
   // ---- flags ----
+  for (const d of deferred) d();
   for (const [f, ws] of testFlags) if (!setFlags.has(f) && !f.startsWith('_')) err(`flag "${f}" is tested but never set (${ws.slice(0, 3).join('; ')})`);
   const stats = { npcs: Object.keys(C.npcs).length, quests: Object.keys(C.quests).length, places: Object.keys(C.places).length, creatures: Object.keys(C.creatures).length, items: Object.keys(C.items).length, letters: Object.keys(C.letters).length, triggers: Object.keys(C.triggers || {}).length, flags: setFlags.size, endings: [...endings] };
   return { errors: E, warnings: W, stats };

@@ -8,14 +8,33 @@
 // ---------------------------------------------------------------------------
 
 ICONS.size = 64;
+ICONS.cols = 32;   // (alpha 4) a squarer sheet: 32 across instead of 16, so it stays inside the GPU's texture limits
 {
-  // the isometric fallback for blocks (no WebGL) was drawn for 32 px cells: scale it up to the bigger cells
+  // The isometric fallback for blocks was drawn for 32 px cells: scale it up to the bigger cells. (alpha 4) And only
+  // draw it if the 3D block icons can't be: drawn first for every block and then painted over, it was most of the
+  // start-up time on slower machines. buildIcons() now only notes where each block's picture goes; renderBlockIcons()
+  // replaces them in 3D, and if it can't (or never runs), the flat ones are drawn after all.
   const baseIso = drawIsoBlock;
   drawIsoBlock = function (g, ox, oy, faces) {
+    if (ICONS.isoLater) { ICONS.isoLater.push([ox, oy, faces]); return; }
     const k = ICONS.size / 32;
     if (k === 1) return baseIso(g, ox, oy, faces);
     g.save(); g.imageSmoothingEnabled = false; g.translate(ox, oy); g.scale(k, k); baseIso(g, 0, 0, faces); g.restore();
   };
+  const baseBuild = buildIcons;
+  buildIcons = function () {
+    ICONS.isoLater = [];
+    try { baseBuild(); } finally { const L = ICONS.isoLater; ICONS.isoLater = null; ICONS.isoPending = L; }
+    setTimeout(() => iconsFlushIso(), 0);   // nothing drew them in 3D in the meantime: draw them flat
+  };
+}
+function iconsFlushIso() {
+  const L = ICONS.isoPending; ICONS.isoPending = null;
+  if (!L || !L.length || !ICONS.canvas) return;
+  const g = ICONS.canvas.getContext('2d'), S = ICONS.size;
+  for (const [ox, oy, f] of L) { g.clearRect(ox, oy, S, S); drawIsoBlock(g, ox, oy, f); }
+  ICONS.dirty = true;
+  if (typeof installIconCSS === 'function' && document.getElementById('vx-icon-css')) installIconCSS();
 }
 function icons3dOn() { try { const s = JSON.parse(localStorage.getItem('emberwild.settings') || '{}'); return s.icons3d !== false; } catch (e) { return true; } }
 
@@ -99,13 +118,15 @@ function renderItemIcons3D(renderer) {
     g.drawImage(tmp, cx * S, H - (cy + 1) * S, S, S, ox, oy, S, S);
     g.restore();
   }
-  ICONS.url = ICONS.canvas.toDataURL();
+  ICONS.dirty = true;
   ICONS.items3d = done.length;
 }
 {
   const baseBlocks = renderBlockIcons;
   renderBlockIcons = function (renderer) {
-    baseBlocks(renderer);
+    let ok = false;
+    try { baseBlocks(renderer); ok = true; } catch (e) { console.warn('3D block icons unavailable', e); }
+    if (ok) ICONS.isoPending = null; else iconsFlushIso();
     try { renderItemIcons3D(renderer); } catch (e) { console.warn('3D item icons unavailable', e); }
   };
 }

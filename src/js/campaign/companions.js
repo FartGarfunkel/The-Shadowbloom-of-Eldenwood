@@ -30,11 +30,11 @@ function hireOffers(g, vid) {
   return out.filter(o => !hireState(g).list.some(x => x.id === o.id));
 }
 function hireWage(o) { return HIRE_KINDS[o.kind].wage + o.level * 2; }
-function goldCount(p) { let n = 0; for (const s of p.inv.main.slots) if (s && s.id === 'gold_coin') n += s.n; return n; }
+function goldCount(p) { return p.inv.count('gold_coin'); }   // (alpha 4) the backpack's purse counts too
 function hireSpawn(g, lp, o, at) {
   const K = HIRE_KINDS[o.kind], P = lp.player;
   const m = new Mob(g, 'hire_' + o.kind, (at ? at[0] : P.x + 1.2), at ? at[1] : P.y, at ? at[2] : P.z + 1.2);
-  m.owner = lp.name; m.tamed = true; m.kept = true; m.petName = o.name; m.hireId = o.id;
+  m.owner = lp.name; m.tamed = true; m.kept = false; m.persistent = true; m.petName = o.name; m.hireId = o.id;   // not kept with the animals: meta.hires brings them back
   m.heldItem = K.held && ITEMS[K.held] ? K.held : null; m.npcArmor = K.armor.map(a => a && ITEMS[a] ? a : null);
   m.maxHealth = m.health = K.hp + o.level * 5;
   g.addEntity(m);
@@ -167,6 +167,7 @@ function hireOpen(lp, vid) {
     const list = fx ? (Array.isArray(fx) ? fx : [fx]) : [];
     const rest = [];
     for (const e of list) {
+      if (e && (e.house || e.mount || e.forge) && g.isGuest) { const who = lp || g.locals[0]; if (who) who.toast('In a shared world only the host can buy houses, horses and forge work for now', 'warn'); continue; }   // (alpha 4) it would have charged the host
       if (e && e.house && !g.isGuest) {
         try {
           const who = lp || g.locals[0], price = e.price || 200, v = campTownPlan(g.world.gen, e.house);
@@ -181,4 +182,75 @@ function hireOpen(lp, vid) {
     }
     return rest.length ? baseDo(g, rest, lp, ctx) : undefined;
   };
+}
+
+// ---- (alpha 3) mounts: the stables sell horses, saddled and yours. Effect: { mount: type, price } ---------------------------
+// ---- and Grom's forge: silvering, tempering, resonance. Effect: { forge: 'silver'|'temper'|'resonant', price, needs: [[item, n]] }
+{
+  const baseDo = campDo;
+  campDo = function (g, fx, lp, ctx = {}) {
+    const list = fx ? (Array.isArray(fx) ? fx : [fx]) : [];
+    const rest = [];
+    for (const e of list) {
+      if (e && (e.mount || e.forge) && !g.isGuest) { try { e.mount ? campBuyMount(g, lp || g.locals[0], e) : campForge(g, lp || g.locals[0], e); } catch (err) { console.warn('stable/forge', err); } }
+      else rest.push(e);
+    }
+    return rest.length ? baseDo(g, rest, lp, ctx) : undefined;
+  };
+}
+function campBuyMount(g, lp, e) {
+  const price = e.price || 75, type = MOB_TYPES[e.mount] ? e.mount : 'horse';
+  if (goldCount(lp.player) < price) { lp.toast(`That one\'s ${price} gp. You carry ${goldCount(lp.player)}`, 'warn'); return; }
+  lp.player.inv.remove('gold_coin', price);
+  const P = lp.player, m = new Mob(g, type, P.x + 2, P.y, P.z + 1);
+  m.owner = lp.name; m.tamed = true; m.kept = true; m.saddled = true; m.petName = e.name || ['Bramble', 'Clover', 'Ash', 'Dusk', 'Pepper', 'Thistle', 'Willow', 'Biscuit'][Math.floor(Math.random() * 8)];
+  if (MOB_TYPES[type].variants) m.variant = MOB_TYPES[type].variants[Math.floor(Math.random() * MOB_TYPES[type].variants.length)];
+  g.addEntity(m);
+  lp.toast(`${m.petName} is yours, saddled and ready. Use it to ride`, 'good');
+}
+function campForge(g, lp, e) {
+  const p = lp.player, h = p.inv.held, d = h && itemDef(h.id);
+  if (!h || !d || !(d.tool || (d.dnd && d.dnd.dmg) || d.dndWeapon || /sword|axe|mace|hammer|spear|dagger|bow|rapier|scimitar|glaive|halberd|pike|maul|club|staff|flail|morningstar|trident|whip|sickle/.test(h.id))) { lp.toast('Grom: “Put the weapon in your hand, lad. I can\'t temper your elbow.”', 'warn'); return; }
+  const price = e.price || 40;
+  if (e.forge === 'silver' && h.silvered) { lp.toast('Grom: “That\'s already silvered.”', ''); return; }
+  if (e.forge === 'temper' && (h.plus || 0) >= (e.max || 1)) { lp.toast(`Grom: “It\'ll take no more than +${e.max || 1} from me${(e.max || 1) < 3 ? ' without something rarer to work in' : ''}.”`, ''); return; }
+  if (e.forge === 'temper' && (h.plus || 0) < (e.max || 1) - 1) { lp.toast(`Grom: “One step at a time. Bring it to +${(e.max || 1) - 1} first, or the steel cracks.”`, 'warn'); return; }   // (alpha 4) +2 cost a scale and gave +1
+  if (e.forge === 'resonant' && h.resonant) { lp.toast('Grom: “It already sings.”', ''); return; }
+  for (const [it, n] of e.needs || []) if (p.inv.count(it) < n) { lp.toast(`Grom: “I\'ll need ${n} × ${(itemDef(it) || { name: it }).name} for that.”`, 'warn'); return; }
+  if (goldCount(p) < price) { lp.toast(`Grom: “${price} gold. Steel doesn\'t work itself.”`, 'warn'); return; }
+  p.inv.remove('gold_coin', price); for (const [it, n] of e.needs || []) p.inv.remove(it, n);
+  if (e.forge === 'silver') h.silvered = 1;
+  if (e.forge === 'temper') h.plus = Math.max((h.plus || 0) + 1, e.max || 1);
+  if (e.forge === 'resonant') h.resonant = 1;
+  g.sfx.play('anvil');
+  lp.toast(e.forge === 'silver' ? 'Grom silvers the edge: it bites the undead, the fiends and the shapeshifters' : e.forge === 'temper' ? `Grom tempers it: now +${h.plus}` : 'Grom works the crystal into the steel. It hums, and strikes with thunder', 'epic');
+}
+{
+  // what the forge did, in the fight: silver (+1d6 to undead, fiends, shapeshifters), temper (+N), resonance (+1d6 thunder)
+  const baseAtk = dndAttack;
+  dndAttack = function (lp, e, W, o = {}) {
+    const res = baseAtk(lp, e, W, o);
+    try {
+      const h = lp.player.inv.held;
+      if (res && h && (h.plus || h.silvered || h.resonant)) {
+        if (!res.hit && h.plus && Math.random() < h.plus * 0.05) res.hit = true;
+        if (res.hit) {
+          if (h.plus) res.dmg += h.plus;
+          if (h.silvered && ['undead', 'fiend', 'shapechanger', 'lycanthrope'].includes(dndCType(e))) res.dmg += dndRoll(res.crit ? 2 : 1, 6).total;
+          if (h.resonant) res.dmg += Math.round(dndRoll(res.crit ? 2 : 1, 6).total * dndMobTakes(e, 'thunder'));
+        }
+      }
+    } catch (err) { /* plain */ }
+    return res;
+  };
+  const baseInfo = itemInfoHTML;
+  itemInfoHTML = function (s, ...a) {
+    let html = baseInfo(s, ...a);
+    try { if (s && (s.plus || s.silvered || s.resonant)) html += `<div class="ii-forge">${s.plus ? `Tempered +${s.plus}` : ''}${s.silvered ? `${s.plus ? ' · ' : ''}Silvered` : ''}${s.resonant ? `${s.plus || s.silvered ? ' · ' : ''}Resonant (+1d6 thunder)` : ''}</div>`; } catch (e) { /* plain */ }
+    return html;
+  };
+  const baseNorm = normalizeStack;
+  normalizeStack = function (s) { const o = baseNorm(s); if (o && s) { if (s.plus) o.plus = s.plus | 0; if (s.silvered) o.silvered = 1; if (s.resonant) o.resonant = 1; } return o; };
+  const baseMerge = canMerge;
+  canMerge = function (a, b) { return baseMerge(a, b) && (a.plus || 0) === (b.plus || 0) && !!a.silvered === !!b.silvered && !!a.resonant === !!b.resonant; };
 }

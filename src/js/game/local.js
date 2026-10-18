@@ -68,9 +68,12 @@ class LocalPlayer {
     g.sfx.play('hurt');
     if (this.pads.size) g.pads.rumble(this, Math.min(1, 0.25 + dealt * 0.08), 140);
     if (src.attacker && src.knock !== 0) {
-      const kx = p.x - src.attacker.x, kz = p.z - src.attacker.z, l = Math.hypot(kx, kz) || 1;
+      // (alpha 4) an attacker given as a player's controller (spells) has its position on .player: without it this was NaN
+      const A = Number.isFinite(src.attacker.x) ? src.attacker : (src.attacker.player || src.attacker);
+      const kx = p.x - A.x, kz = p.z - A.z, l = Math.hypot(kx, kz) || 1;
       const k = src.knock || 5;
-      p.vx += kx / l * k; p.vz += kz / l * k; p.vy = Math.max(p.vy, 4);
+      if (Number.isFinite(kx) && Number.isFinite(kz)) { p.vx += kx / l * k; p.vz += kz / l * k; }
+      p.vy = Math.max(p.vy, 4);
     }
     if (src.element === 'fire' && src.type !== 'burn') p.burn = Math.max(p.burn, 2);
     if (p.health <= 0) this.die(src);

@@ -624,7 +624,9 @@ function buildIcons() {
   const rows = Math.ceil(keys.length / cols);
   const cv = document.createElement('canvas');
   cv.width = cols * S; cv.height = rows * S;
-  const g = cv.getContext('2d');
+  // (alpha 4) a plain in-memory canvas: every icon is copied into it from other canvases, which on an accelerated
+  // canvas meant a trip to the graphics card and back for each of thousands of icons
+  const g = cv.getContext('2d', { willReadFrequently: true });
   g.imageSmoothingEnabled = false;
   keys.forEach((key, i) => {
     const def = ITEMS[key];
@@ -641,13 +643,13 @@ function buildIcons() {
   });
   ICONS.rows = rows;
   ICONS.canvas = cv;
-  ICONS.url = cv.toDataURL();
+  ICONS.dirty = true;     // (alpha 4) the sheet is published once, by installIconCSS, not after every pass
 }
 function drawIsoBlock(g, ox, oy, faces) {
   // Each face is drawn into a scratch canvas with an affine transform, shaded,
   // then composited, so shading never bleeds onto neighbouring faces.
   const tmp = drawIsoBlock._tmp || (drawIsoBlock._tmp = Object.assign(document.createElement('canvas'), { width: 32, height: 32 }));
-  const tg = tmp.getContext('2d'); tg.imageSmoothingEnabled = false;
+  const tg = tmp.getContext('2d', { willReadFrequently: true }); tg.imageSmoothingEnabled = false;
   const face = (t, m, dark) => {
     tg.setTransform(1, 0, 0, 1, 0, 0); tg.clearRect(0, 0, 32, 32);
     tg.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
@@ -662,6 +664,21 @@ function drawIsoBlock(g, ox, oy, faces) {
 // Icons use one shared stylesheet rule for the sheet image; each element only
 // carries its background-position.
 function installIconCSS() {
+  // (alpha 4) The sheet is big (thousands of items at 64 px a cell). As a data: URL it was megabytes of text in the
+  // stylesheet, written out three times at start-up; now it is encoded once, off the main thread, into a blob: URL.
+  if (ICONS.canvas && ICONS.dirty && !ICONS.pending) {
+    ICONS.pending = true; ICONS.dirty = false;
+    const publish = (url) => {
+      ICONS.pending = false;
+      if (ICONS.blobURL && ICONS.blobURL !== url) { try { URL.revokeObjectURL(ICONS.blobURL); } catch (e) { /* gone */ } }
+      ICONS.blobURL = url.startsWith('blob:') ? url : null;
+      ICONS.url = url;
+      installIconCSS();
+    };
+    const asData = () => { try { return ICONS.canvas.toDataURL(); } catch (e) { return ''; } };
+    try { ICONS.canvas.toBlob(b => { let u = ''; try { u = b ? URL.createObjectURL(b) : asData(); } catch (e) { u = asData(); } publish(u); }, 'image/png'); }
+    catch (e) { ICONS.pending = false; ICONS.url = asData(); }
+  }
   let st = document.getElementById('vx-icon-css');
   if (!st) { st = document.createElement('style'); st.id = 'vx-icon-css'; document.head.appendChild(st); }
   st.textContent = `.ico{background-image:url(${ICONS.url});background-size:${ICONS.cols * 100}% ${ICONS.rows * 100}%;background-repeat:no-repeat;image-rendering:pixelated}`;

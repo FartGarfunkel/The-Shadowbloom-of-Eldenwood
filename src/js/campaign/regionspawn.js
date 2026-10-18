@@ -66,15 +66,18 @@ function rspawnTick(g, dt) {
   if (near >= (night ? 6 : 3)) return;
   if (Math.random() > (night ? 0.55 : 0.3)) return;
   const regs = rspawnRegionAt(g, P.x, P.y, P.z), pools = rspawnPools();
-  const lv = Math.max(1, ...g.locals.map(l => (dndOf(l.player) || { level: 1 }).level));
-  const maxCr = Math.max(0.5, lv <= 2 ? 0.5 : lv <= 4 ? lv / 2 : lv * 0.75);
+  if (regs[0] === 'caverns') return;          // under the ground the dungeons and caves keep their own
+  // (alpha 4 balance) by the D&D encounter budget for the party, not a fixed fraction of the level: a lone level-12
+  // hero met CR 9 creatures (a deadly fight for four); now about CR 5 alone, CR 7 for two
+  const budget = typeof encBudget === 'function' ? encBudget(g, night ? 1.15 : 0.9) : 200;
   let cands = [];
-  for (const r of regs) for (const k of pools[r] || []) { const T = MOB_TYPES[k]; if ((T.cr ?? 1) > maxCr) continue; if (T.night && T.night === true && !night) continue; if (T.day === true && night) continue; cands.push(k); }
+  for (const r of regs) for (const k of pools[r] || []) { const T = MOB_TYPES[k]; if ((typeof encXpOf === 'function' ? encXpOf(k) : 100) > budget) continue; if (T.night && T.night === true && !night) continue; if (T.day === true && night) continue; cands.push(k); }
   cands = [...new Set(cands)]; if (!cands.length) return;
   // weaker creatures are commoner
   const pick = () => { let tot = 0; const w = cands.map(k => { const v = 1 / (1 + (MOB_TYPES[k].cr ?? 1)); tot += v; return v; }); let r = Math.random() * tot; for (let i = 0; i < cands.length; i++) if ((r -= w[i]) <= 0) return cands[i]; return cands[0]; };
   const type = pick(), T = MOB_TYPES[type], sea = regs.includes('sea');
-  const n = (T.cr ?? 1) <= 0.25 ? 1 + Math.floor(Math.random() * 3) : (T.cr ?? 1) <= 1 ? 1 + (Math.random() < 0.4 ? 1 : 0) : 1;
+  let n = (T.cr ?? 1) <= 0.25 ? 1 + Math.floor(Math.random() * 3) : (T.cr ?? 1) <= 1 ? 1 + (Math.random() < 0.4 ? 1 : 0) : 1;
+  if (typeof encXpOf === 'function') while (n > 1 && encXpOf(type) * n * encMult(n) > budget) n--;
   for (let tries = 0; tries < 6; tries++) {
     const a = Math.random() * TAU, d = 26 + Math.random() * 16, x = P.x + Math.sin(a) * d, z = P.z + Math.cos(a) * d;
     if (!g.world.isLoaded(Math.floor(x), Math.floor(z))) continue;

@@ -16,7 +16,9 @@
 //     his watch yourself.
 // ---------------------------------------------------------------------------
 
-if (MOB_TYPES.herobrine) Object.assign(MOB_TYPES.herobrine, { label: 'Herobrine, the Watcher' });
+// (alpha 4 balance) the last fight of the campaign: a party reaches him around level 12-14, with tempered weapons, so he
+// stands up to them longer than Seraphina (620) or the Heart Guardian (420), and his blows and bolts are the hardest yet
+if (MOB_TYPES.herobrine) Object.assign(MOB_TYPES.herobrine, { label: 'Herobrine, the Watcher', hp: 840, damage: 12, ac: 18, toHit: 9, boltDmg: 9, dndXp: 12000 });
 Object.assign(SB.quests, {
   q14: { title: 'He Who Watches', main: true, order: 14, summary: 'The Veil closed on the Bloom, and something stepped through as it closed. Herobrine, the Watcher, the one Seraphina truly served. His realm is bleeding into Eldenwood.',
     stages: {
@@ -45,6 +47,8 @@ Object.assign(SB.endings, {
   if (N && N.good) N.good.do = N.good.do.filter(e => !e.end).concat(turn('good'));
   if (N && N.lyra) for (const o of N.lyra.opts) if (o.do && o.do.some(e => e.end)) o.do = o.do.filter(e => !e.end).concat(turn('lyra'));
 }
+// Fate's farewell ("Now they are") waits until he's gone too, if he came through
+if (SB.npcs.fate_end) SB.npcs.fate_end.if = { all: [{ quest: 'q13', done: true }, { any: [{ quest: 'q14', done: true }, '!watcher_awake'] }] };
 // the tear above the Corrupted Heart: the rift's gateway (game/riftarc.js), opened by the story
 function watcherOpenTear(g) {
   const C = campDef(g); if (!C || g.dim !== 0) return;
@@ -84,12 +88,23 @@ function watcherTick(g, dt) {
   const baseUpd = Game.prototype.updateEntities;
   Game.prototype.updateEntities = function (dt) { try { watcherTick(this, dt); } catch (e) { console.warn('watcher', e); } return baseUpd.call(this, dt); };
 }
-// entering his realm counts for the story
+// entering his realm counts for the story; and once he has fallen, the choice keeps being offered until it is made
 {
   const baseUpd = LocalPlayer.prototype.update;
   LocalPlayer.prototype.update = function (dt, inp) {
     const r = baseUpd.call(this, dt, inp);
-    try { const g = this.g; if (g.meta.campaign && g.dim === DIM.REALM && !g.isGuest) { const S = campState(g); if (S.flags.watcher_awake && !S.flags.realm_entered) campDo(g, [{ flag: 'realm_entered' }, { narrate: [{ title: 'His Realm', text: 'Violet stone. Broken pieces of Eldenwood hanging in the dark: a well, half a cottage, the Stonebridge fountain with no town around it. Everything you have ever seen out of the corner of your eye, kept here.\n\nAt the end of the halls, someone is waiting. He has always been waiting.' }] }], this); } } catch (e) { /* not yet */ }
+    try {
+      const g = this.g;
+      if (g.meta.campaign && !g.isGuest && this === g.locals[0]) {
+        const S = campState(g);
+        if (g.dim === DIM.REALM && S.flags.watcher_awake && !S.flags.realm_entered) campDo(g, [{ flag: 'realm_entered' }, { milestone: 13, why: 'His realm' }, { narrate: [{ title: 'His Realm', text: 'Violet stone. Broken pieces of Eldenwood hanging in the dark: a well, half a cottage, the Stonebridge fountain with no town around it. Everything you have ever seen out of the corner of your eye, kept here.\n\nAt the end of the halls, someone is waiting. He has always been waiting.' }] }], this);
+        // (alpha 4) closed the choice without choosing, or left the world before it: it asks again
+        if (S.flags.watcher_fallen && !S.ended && !S.flags.veil_seal && !S.flags.veil_retune && !S.flags.veil_watch && !WATCH_RT.open) {
+          if (WATCH_RT.reask == null) WATCH_RT.reask = g.time + 15;
+          else if (g.time > WATCH_RT.reask && this.mode === 'play' && !this.npcUI && !(CAMP_RT.narrating && CAMP_RT.narrating.el && CAMP_RT.narrating.el.isConnected)) { WATCH_RT.reask = null; watcherChoice(g, true); }
+        }
+      }
+    } catch (e) { /* not yet */ }
     return r;
   };
 }
@@ -101,17 +116,21 @@ function watcherTick(g, dt) {
     try {
       const S = g.meta.campaign && campState(g);
       if (S && S.flags.watcher_awake && !S.flags.watcher_fallen) {
+        WATCH_RT.open = true;
         campDo(g, [{ flag: 'watcher_fallen' }, { xp: 8000, why: 'Herobrine, the Watcher' }], g.locals[0]);
         setTimeout(() => watcherChoice(g), 5000);
       }
     } catch (e) { console.warn('watcher seal', e); }
   };
 }
-function watcherChoice(g) {
-  const lp = g.locals[0]; if (!lp) return;
-  const S = campState(g), sung = S.flags.veil_way_lyra ? 'lyra' : 'good';
-  campNarrate(g, [{ title: 'The Watcher Falls', text: 'He does not fall the way the others fell. He comes apart like a reflection in disturbed water, and for a moment, between the pieces, you see the Veil itself: thin as breath, humming, waiting for a hand on it.\n\nIt can be set three ways. Lyra knew. Eldon knew. Now you do.' }], 'He Who Watches', () => {
-    dndOpenPicker(lp, {
+function watcherChoice(g, again) {
+  const lp = g.locals[0]; if (!lp) { WATCH_RT.open = false; return; }
+  const S = campState(g); if (S.ended) { WATCH_RT.open = false; return; }
+  const sung = S.flags.veil_way_lyra ? 'lyra' : 'good';
+  WATCH_RT.open = true;
+  const ask = () => {
+    let picked = false;
+    const P = dndOpenPicker(lp, {
       title: 'What becomes of the Veil?', status: 'This is the end of the tale',
       rows: () => [
         { id: 'seal', label: 'Seal it, as the song set it', sub: sung === 'lyra' ? 'The Veil closes for good, and Lyra\'s voice stays in it.' : 'The Veil closes for good, whole and sung.' },
@@ -119,11 +138,16 @@ function watcherChoice(g) {
         { id: 'watch', label: 'Take up his watch', sub: 'Someone has to stand at the edge and listen. You will.' },
       ],
       pick: (r) => {
-        campDo(g, [{ flag: 'veil_' + r.id }, { complete: 'q14' }], lp);
+        picked = true; WATCH_RT.open = false;
+        campDo(g, [{ flag: 'veil_' + r.id }, { complete: 'q14' }, { milestone: 14, why: 'The Veil' }], lp);
         campEnd(g, r.id === 'seal' ? sung : r.id === 'retune' ? 'retuned' : 'watcher');
         return true;
       },
+      onClose: () => { if (!picked) { WATCH_RT.open = false; WATCH_RT.reask = g.time + 12; lp.toast('The Veil waits for your hand. It will ask again in a moment', ''); } },
       hint: 'A to choose',
     });
-  });
+    if (!P) { WATCH_RT.open = false; WATCH_RT.reask = g.time + 3; }
+  };
+  if (again) { ask(); return; }
+  campNarrate(g, [{ title: 'The Watcher Falls', text: 'He does not fall the way the others fell. He comes apart like a reflection in disturbed water, and for a moment, between the pieces, you see the Veil itself: thin as breath, humming, waiting for a hand on it.\n\nIt can be set three ways. Lyra knew. Eldon knew. Now you do.' }], 'He Who Watches', ask);
 }

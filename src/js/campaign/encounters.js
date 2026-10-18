@@ -31,6 +31,38 @@ const ENC_TRAVEL_LINES = [
   'There\'s black flowers growing by the ditches now. My gran says don\'t touch them.', 'Stonebridge shuts its gates at dusk. Don\'t get caught outside.',
   'Fine weather for it. Mind the marsh road, it eats boots.', 'Seen lights in the hills at night. Not lanterns.',
 ];
+// (alpha 4 balance) how much a fight should hold, by the D&D encounter budget: the party's levels and numbers set it,
+// the land's danger leans on it (easy by day on the roads near Stonebridge, hard in the far wilds at night)
+const ENC_CR_XP = [[0, 10], [0.125, 25], [0.25, 50], [0.5, 100], [1, 200], [2, 450], [3, 700], [4, 1100], [5, 1800], [6, 2300], [7, 2900], [8, 3900], [9, 5000], [10, 5900], [11, 7200], [12, 8400], [13, 10000], [14, 11500], [15, 13000], [16, 15000], [17, 18000], [18, 20000], [19, 22000], [20, 25000], [21, 33000], [22, 41000], [23, 50000], [24, 62000], [30, 155000]];
+const ENC_MEDIUM = [0, 50, 100, 150, 250, 500, 600, 750, 1000, 1100, 1200, 1600, 2000, 2200, 2500, 2800, 3200, 3900, 4200, 4900, 5700];
+function encXpOf(type) {
+  const T = MOB_TYPES[type]; if (!T) return 50;
+  if (T.cr != null) { let xp = 10; for (const [c, v] of ENC_CR_XP) if (c <= T.cr) xp = v; return xp; }
+  if (T.dndXp) return T.dndXp;
+  const hp = T.hp || 10; return Math.round(hp * hp * 0.07 + hp * 1.6);
+}
+function encMult(n) { return n <= 1 ? 1 : n === 2 ? 1.5 : n <= 6 ? 2 : n <= 10 ? 2.5 : 3; }
+function encBudget(g, k) {
+  const lv = Math.max(1, ...g.locals.map(l => (dndOf(l.player) || { level: 1 }).level));
+  const n = Math.max(1, g.pawns().filter(p => !p.dead).length);
+  return (ENC_MEDIUM[Math.min(20, lv)] || 50) * n * (k || 1);
+}
+// the strongest of the listed kinds the budget allows, and how many
+function encPick(g, E, danger) {
+  const budget = encBudget(g, Math.max(0.6, Math.min(2.2, (danger || 1) * 1.6)));
+  const list = [].concat(E.mobs[0]).filter(k => k && MOB_TYPES[k]);
+  if (!list.length) return null;
+  for (const t of list) {
+    const xp = encXpOf(t);
+    let n = 0; for (let k = E.mobs[2]; k >= 1; k--) if (xp * k * encMult(k) <= budget) { n = k; break; }
+    if (n >= Math.min(E.mobs[1], 2)) {
+      const L = E.lead && encType(E.lead), lead = L && L !== t && (xp * n + encXpOf(L)) * encMult(n + 1) <= budget * 1.15 ? L : null;
+      return { type: t, n, lead };
+    }
+  }
+  const t = list.reduce((a, k) => encXpOf(k) < encXpOf(a) ? k : a, list[0]);   // too much for them even in pairs: the weakest kind
+  return { type: t, n: encXpOf(t) * 3 <= budget ? 2 : 1, lead: null };
+}
 function encType(list) { for (const k of [].concat(list)) if (k && MOB_TYPES[k]) return k; return null; }
 // how dangerous the land is here: further from the hub is harder; the night adds; the road takes some away
 function encDanger(C, x, z, onRoad, night) {
@@ -47,6 +79,7 @@ function encTick(g, dt) {
   const C = campDef(g);
   if (!C || g.isGuest || g.dim !== 0 || !g.world || g.state !== 'playing') return;
   if (g.rules && g.rules().encounters === false) return;
+  if (ENC_RT.world !== g.meta.id) { ENC_RT.world = g.meta.id; ENC_RT.active = null; ENC_RT.last = null; ENC_RT.dist = 0; ENC_RT.cool = 90; }
   const ps = g.pawns().filter(p => !p.dead); if (!ps.length) return;
   const lead = ps[0];
   // how far the party has gone since the last thing that happened
@@ -146,11 +179,11 @@ function encRun(g, C, A, dt) {
 }
 function encSpawn(g, A, how) {
   const E = A.E, w = g.world, [x, y, z] = A.at, ps = g.pawns().filter(p => !p.dead);
-  const type = encType(E.mobs[0]); if (!type) return;
-  const n = Math.max(E.mobs[1], Math.min(E.mobs[2], Math.round(E.mobs[1] + (E.mobs[2] - E.mobs[1]) * Math.min(1, A.danger) + ps.length - 1)));
+  const pk = encPick(g, E, A.danger); if (!pk) return;
+  const type = pk.type, n = pk.n;
   const lead = ps.reduce((b, p) => (!b || Math.hypot(p.x - x, p.z - z) < Math.hypot(b.x - x, b.z - z) ? p : b), null);
   const spots = [];
-  for (let i = 0; i < n + (E.lead ? 1 : 0); i++) {
+  for (let i = 0; i < n + (pk.lead ? 1 : 0); i++) {
     let sx, sz;
     if (how === 'ambush' && lead) {
       // out of the trees on either side, and one behind
@@ -162,7 +195,7 @@ function encSpawn(g, A, how) {
     spots.push([sx, sy, sz]);
   }
   spots.forEach(([sx, sy, sz], i) => {
-    const t = i === spots.length - 1 && E.lead ? (encType(E.lead) || type) : type;
+    const t = i === spots.length - 1 && pk.lead ? pk.lead : type;
     const m = new Mob(g, t, sx, sy, sz);
     m.encOf = E.id; m.kept = false;
     if (how === 'camp') { m.yaw = Math.atan2(-(x - sx), -(z - sz)); m.encCalm = 1; }
