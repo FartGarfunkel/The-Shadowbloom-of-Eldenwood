@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 const LOOK_HAIR = [['bald', 'Bald'], ['short', 'Short'], ['crop', 'Cropped'], ['long', 'Long'], ['tail', 'Ponytail'], ['braids', 'Braids'], ['mohawk', 'Crest'], ['bun', 'Topknot'], ['curly', 'Curly'], ['sides', 'Shaved sides'], ['wild', 'Wild mane']];
-const LOOK_BEARD = [['none', 'None'], ['stubble', 'Stubble'], ['short', 'Short'], ['long', 'Long'], ['braided', 'Braided'], ['moustache', 'Moustache']];
+const LOOK_BEARD = [['none', 'None'], ['stubble', 'Stubble'], ['short', 'Short'], ['long', 'Long'], ['wizard', 'Wizard (long)'], ['forked', 'Forked'], ['braided', 'Braided'], ['moustache', 'Moustache']];
 const LOOK_EYES = [['round', 'Round'], ['narrow', 'Narrow'], ['wide', 'Wide'], ['slit', 'Slit'], ['glow', 'Glowing']];
 const LOOK_MOUTH = [['plain', 'Plain'], ['smile', 'Smile'], ['stern', 'Stern'], ['grin', 'Grin']];
 const LOOK_MARKS = [['none', 'None'], ['freckles', 'Freckles'], ['scar', 'Scar'], ['paint', 'War paint'], ['tattoo', 'Markings'], ['blush', 'Rosy cheeks']];
@@ -55,6 +55,10 @@ function dndDefaultLook(species, cls, seed) {
     outfit: o, cols: LOOK_OUTFITS[o].cols.slice(), hood: cls === 'ranger' || cls === 'warlock' || cls === 'rogue' ? R() < 0.5 : false, cloak: ['ranger', 'wizard', 'warlock', 'paladin', 'druid'].includes(cls),
     hat: cls === 'wizard' ? 'wizard' : cls === 'bard' ? 'feather' : cls === 'druid' ? 'circlet' : 'none',
   };
+  // (alpha 2) a wizard grows the long wizard's beard (if their folk grow beards at all)
+  if (cls === 'wizard' && !['elf', 'dragonborn', 'tiefling'].includes(species)) look.beard = 'wizard';
+  // a hat or a hood means the helmet stays off your head (you can change it on the Looks page)
+  look.helm = look.hat !== 'none' || look.hood ? 'hide' : 'show';
   if (species === 'gnome') look.nose = true;
   return look;
 }
@@ -71,7 +75,7 @@ function dndPaintSkin(look) {
     for (const [f, [x0, y0, fw, fh]] of Object.entries(faces)) for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) put(x0 + x, y0 + y, fn(f, x, y, fw, fh));
   };
   const dark = (c, k = 0.72) => c.map(q => q * k), light = (c, k = 1.22) => c.map(q => Math.min(255, q * k));
-  const skin = H(L.skin), hair = H(L.hairCol), eye = H(L.eyeCol), beardC = H(L.beardCol || L.hairCol);
+  const skin = H(L.skin), hair = H(L.hairCol), eye1 = H(L.eyeCol), eye2 = L.eyeCol2 ? H(L.eyeCol2) : eye1, beardC = H(L.beardCol || L.hairCol);
   const [cMain, cTrim, cLegs, cBoots] = (L.cols || LOOK_OUTFITS[L.outfit].cols).map(H);
   const scaleTint = (x, y) => L.scales ? ((x + y) % 2 === 0 ? dark(skin, 0.86) : skin) : skin;
   const white = [242, 240, 232], slim = L.body === 'slim';
@@ -96,6 +100,7 @@ function dndPaintSkin(look) {
       if (y === 2) { if ((x >= 1 && x <= 2) || (x >= 5 && x <= 6)) return L.species === 'orc' || L.species === 'dwarf' ? dark(beardC, 0.8) : L.snout ? dark(sk, 0.8) : dark(hair, 0.85); return sk; }
       // eyes (row 3: the blink row)
       if (y === 3) {
+        const eye = x >= 4 ? eye2 : eye1;   // two colours, one each side, when the look has them
         const E = L.eyes;
         if (E === 'glow') return (x === 1 || x === 2 || x === 5 || x === 6) ? light(eye, 1.4) : sk;
         if (E === 'slit') return x === 1 || x === 6 ? eye : x === 2 || x === 5 ? [20, 16, 12] : sk;
@@ -104,6 +109,7 @@ function dndPaintSkin(look) {
         return x === 1 || x === 6 ? white : x === 2 || x === 5 ? eye : sk;
       }
       if (y === 4) {
+        const eye = x >= 4 ? eye2 : eye1;
         if (L.eyes === 'wide' && (x === 1 || x === 2 || x === 5 || x === 6)) return x === 2 || x === 5 ? dark(eye, 0.7) : white;
         if (x === 3 || x === 4) return L.nose ? dark(sk, 0.8) : L.snout ? dark(sk, 0.78) : dark(sk, 0.88);
         if (L.marks === 'freckles' && (x === 1 || x === 6 || x === 2) && R() < 0.6) return dark(sk, 0.78);

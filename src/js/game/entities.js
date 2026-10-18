@@ -284,7 +284,7 @@ class Mob extends Entity {
   bossAI(dt, dist, toPlayer, p) {
     const g = this.game;
     const enraged = this.health < this.maxHealth * 0.5;
-    if (enraged && !this.enragedOnce) { this.enragedOnce = true; g.sfx.playAt('roar', this.x, this.y, this.z); g.toastAll('The Cinder Golem is enraged!', 'boss'); g.shake(0.5, this); }
+    if (enraged && !this.enragedOnce) { this.enragedOnce = true; g.sfx.playAt('roar', this.x, this.y, this.z); g.toastAll(this.type === 'cinder_golem' || !this.T.label ? 'The Cinder Golem is enraged!' : `${String(this.T.label).replace(/^the /, 'The ').replace(/^an? /, 'The ')} is enraged!`, 'boss'); g.shake(0.5, this); }
     this.stateT -= dt;
     this.lockMove = false;
     if (this.state === 'spawning') {

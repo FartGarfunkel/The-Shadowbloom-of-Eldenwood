@@ -347,7 +347,7 @@ function dungeonTick(g, dt) {
       }
     }
     // the keeper wakes when someone walks into its hall
-    if (!rec.cleared && !rec.bossUp) {
+    if (!rec.cleared && !rec.bossUp && !(d.place && typeof campDungeonBossOk === 'function' && !campDungeonBossOk(g, d))) {
       const [bx, by, bz] = d.boss.at, room = d.rooms.find(r => r.kind === 'boss');
       const inside = ps.find(q => Math.abs(q.x - bx - 0.5) < room.R + 0.5 && Math.abs(q.z - bz - 0.5) < room.R + 0.5 && q.y >= by - 1 && q.y < by + room.H);
       if (inside && MOB_TYPES[d.boss.type]) {

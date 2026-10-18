@@ -32,7 +32,22 @@ function campaignDefine(C) {
       desc: c.desc, resist: c.resist, minion: c.minion || base.minion,
     });
     if (c.w) T.w = c.w; if (c.h) T.h = c.h;
+    // an animal made hostile fights like a monster, not like a grazing beast (wolves, deer, cows hunt you instead of their prey)
+    if (T.hostile && base.ai && !c.keepAi) { T.ai = undefined; T.retaliates = false; T.skittish = 0; T.farm = false; }
+    if (T.hostile && base.drake) { T.drake = false; T.flyingMount = false; T.retaliates = false; }
+    if (T.hostile && base.spirit) T.spirit = false;
+    T.phases = c.phases || null; T.weakIf = c.weakIf || null; T.onDeath = c.onDeath || null; T.held = c.held || base.held;
+    if (c.minion) T.minion = c.minion;
+    // the Cinder Golem's way of fighting (slam, charge, volley) for anything built on it
+    if (c.base === 'cinder_golem' || c.ai === 'golem') { T.special = true; MONSTER_AI[k] = function (dt, p, dist, dyp, toPlayer) { return this.bossAI(dt, dist, toPlayer, p); }; }
+    else if (c.ai && MONSTER_AI[c.ai]) { T.special = true; MONSTER_AI[k] = MONSTER_AI[c.ai]; }
+    // a bigger (or smaller) one of its kind: the model scaled, and its size with it
+    if (c.scale && typeof MODEL_DEFS !== 'undefined') {
+      const mk = T.model || c.base, D = MODEL_DEFS[mk];
+      if (D) { MODEL_DEFS['c_' + k] = Object.assign({}, D, { scale: (D.scale || 1) * c.scale }); T.model = 'c_' + k; if (!c.w) T.w = (base.w || 0.3) * c.scale; if (!c.h) T.h = (base.h || 1.8) * c.scale; }
+    }
     MOB_TYPES[k] = T;
+    if (typeof DND_MOB_AC !== 'undefined' && c.ac) DND_MOB_AC[k] = c.ac;
     if (typeof MONSTER_AI !== 'undefined' && MONSTER_AI[c.base] && !MONSTER_AI[k]) MONSTER_AI[k] = MONSTER_AI[c.base];
     if (typeof MODEL_OF !== 'undefined' && MODEL_OF[c.base] && !MODEL_OF[k]) MODEL_OF[k] = MODEL_OF[c.base];
   }
@@ -83,8 +98,8 @@ function campOfMeta(meta) { return meta && meta.campaign ? CAMPAIGNS[meta.campai
 function campDef(g) { return campOfMeta(g && g.meta); }
 function campState(g) {
   const M = g.meta; if (!M) return null;
-  const s = M.camp || (M.camp = { started: 0, flags: {}, quests: {}, met: {}, seen: {}, letters: [], log: [], kills: {}, cleared: {}, follow: {}, gone: {} });
-  for (const k of ['flags', 'quests', 'met', 'seen', 'kills', 'cleared', 'follow', 'gone']) if (!s[k]) s[k] = {};
+  const s = M.camp || (M.camp = { started: 0, flags: {}, quests: {}, met: {}, seen: {}, letters: [], log: [], kills: {}, cleared: {}, follow: {}, gone: {}, known: {}, props: {}, anchors: {} });
+  for (const k of ['flags', 'quests', 'met', 'seen', 'kills', 'cleared', 'follow', 'gone', 'known', 'props', 'anchors']) if (!s[k]) s[k] = {};
   for (const k of ['letters', 'log']) if (!s[k]) s[k] = [];
   return s;
 }
@@ -106,7 +121,13 @@ WorldGen.prototype.campaignTownAt = function (rx, rz) {
   const C = campGenDef(); if (!C) return null;
   for (const [id, T] of Object.entries(C.towns)) {
     const [x, z] = T.at;
-    if (Math.floor(x / VREG) === rx && Math.floor(z / VREG) === rz) return { x, z, name: T.name, style: T.style, want: T.buildings, town: id, roadLen: T.roadLen || (T.size === 'small' ? 18 : T.size === 'large' ? 40 : 28), small: T.size === 'small' || !!T.buildings };
+    if (Math.floor(x / VREG) === rx && Math.floor(z / VREG) === rz) {
+      const bl = T.buildings || [];
+      return { x, z, name: T.name, style: T.style, want: bl.map(b => typeof b === 'string' ? b : b.t), signs: bl.map(b => typeof b === 'string' ? null : (b.sign || null)), decors: bl.map(b => typeof b === 'string' ? null : (b.decor || null)), town: id,
+        roadLen: T.roadLen || (this.genVersion >= 5 ? 0 : (T.size === 'small' ? 18 : T.size === 'large' ? 40 : 28)), small: T.size === 'small' || !!T.buildings,
+        tier: T.size === 'large' ? 'city' : T.size === 'small' ? 'village' : 'town', walls: T.walls || null, noFill: !!T.noFill, skipRoad: T.skipRoad,
+        empty: !!T.empty, palisade: !!T.palisade, fountain: T.fountain || null, noJobs: T.noJobs || null, guards: T.guards };
+    }
   }
   return null;
 };
@@ -148,7 +169,11 @@ function campDungeon(g, placeId) {
       let [x, z] = at;
       if (C.start.offset) { x += C.start.offset[0]; z += C.start.offset[1]; }
       const v = C.start.town ? campTownVillage(this, C.start.town) : null;
-      if (v && !C.start.offset && v.roads && v.roads.length) { const r = v.roads[0], c = r.cells[r.cells.length - 4] || r.cells[0]; x = c[0]; z = c[1]; }
+      if (v && !C.start.offset && v.roads && v.roads.length) {
+        const r = v.roads[(C.start.road || 0) % v.roads.length], c = r.cells[r.cells.length - 4] || r.cells[0]; x = c[0]; z = c[1];
+        // outside the walls, on the road in
+        if (C.start.outside) { const e = r.cells[r.cells.length - 2] || c; x = v.x + DXL[r.d] * (r.L + C.start.outside); z = v.z + DZL[r.d] * (r.L + C.start.outside); void e; }
+      }
       const h = this.world.gen.column(Math.floor(x), Math.floor(z)).h;
       this.meta.spawn = [Math.floor(x) + 0.5, Math.max(h, SEA) + 1, Math.floor(z) + 0.5];
     }
@@ -172,10 +197,12 @@ function campTest(g, cond, lp) {
     if (cond.done && !(Q && Q.done)) return false;
     if (cond.notStarted && Q) return false;
     if (cond.active && !(Q && !Q.done)) return false;
+    if (cond.undone && Q && Q.done) return false;
     if (cond.stage && !(Q && !Q.done && Q.stage === cond.stage)) return false;
     if (cond.past && !(Q && (Q.done || (Q.passed || []).includes(cond.past)))) return false;
   }
   if (cond.has) { const n = cond.n || 1; const who = lp ? [lp] : g.locals; if (!who.some(l => l.player.inv.count(cond.has) >= n)) return false; }
+  if (cond.lacks && g.locals.some(l => l.player.inv.count(cond.lacks) > 0)) return false;
   if (cond.cls || cond.species) { const c = lp && lp.player.stats && lp.player.stats.dnd; if (!c) return false; if (cond.cls && ![].concat(cond.cls).includes(c.cls)) return false; if (cond.species && ![].concat(cond.species).includes(c.species)) return false; }
   if (cond.met && !S.met[cond.met]) return false;
   if (cond.cleared && !S.cleared[cond.cleared]) return false;
@@ -212,7 +239,7 @@ function campDo(g, fx, lp, ctx = {}) {
       if (e.gold) campGive(g, lp, 'gold_coin', e.gold, e.party !== false);
       if (e.xp) campXp(g, e.xp, e.why || 'the story');
       if (e.letter) { if (!S.letters.includes(e.letter)) S.letters.push(e.letter); campGive(g, lp, 'lore_' + e.letter, 1); }
-      if (e.read && lp) new BookUI(lp, e.read);
+      if (e.read && lp) campOpenBook(lp, e.read);
       if (e.note) campLog(g, e.note);
       if (e.follow) { S.follow[e.follow] = 1; delete S.gone[e.follow]; }
       if (e.stay) delete S.follow[e.stay];
@@ -360,9 +387,12 @@ function campQuestTick(g) {
   // triggers: things that happen when the party gets somewhere, or a flag is set
   for (const [k, T] of Object.entries(C.triggers || {})) {
     if (S.flags['_t_' + k]) continue;
+    if (T.rest) continue;   // these wait for a long rest (campaign/extras.js)
     if (T.if && !campTest(g, T.if)) continue;
+    if (T.night && !(typeof npcPhase === 'function' && npcPhase(g) > 0.55)) continue;
     let fire = false;
     if (T.reach) { const at = campPos(C, T.reach), r = T.r || 20; fire = !!at && g.dim === 0 && campParty(g).some(p => !p.dead && Math.hypot(p.x - at[0], p.z - at[1]) < r); }
+    else if (T.far) { const at = campPos(C, T.far), r = T.r || 120, ps = campParty(g).filter(p => !p.dead); fire = !!at && g.dim === 0 && ps.length > 0 && ps.every(p => Math.hypot(p.x - at[0], p.z - at[1]) > r); }
     else if (T.after) fire = (g.meta.playTime || 0) > T.after;
     else fire = true;
     if (fire) { S.flags['_t_' + k] = 1; campDo(g, T.do); }
@@ -541,22 +571,40 @@ function campSiteTick(g) {
 
 // ---- the people of the story ----------------------------------------------------------------------------------
 function campNpcPost(g, C, id, N) {
-  if (N.at) { const [x, z] = N.at; return [x + 0.5, null, z + 0.5]; }
+  if (N.at) { const [x, z] = N.at; return [x + 0.5, N.y != null ? N.y : null, z + 0.5]; }
   const S = campState(g);
   if (S.follow[id]) return null;
   if (N.town) {
     const v = campTownVillage(g, N.town); if (!v) return null;
     const post = N.post || 'plaza';
     if (Array.isArray(post)) return [v.x + post[0] + 0.5, v.y + 1, v.z + post[1] + 0.5];
-    if (post === 'plaza') { const k = (hash32(id.length, id.charCodeAt(0), 3, 9) % 8) / 8 * TAU; return [v.x + Math.cos(k) * 4 + 0.5, v.y + 1, v.z + Math.sin(k) * 4 + 0.5]; }
+    if (post === 'plaza') { const k = (hash32(id.length, id.charCodeAt(0), 3, 9) % 8) / 8 * TAU, rr = (v.fr || 2) + 2.5; return [v.x + Math.cos(k) * rr + 0.5, v.y + 1, v.z + Math.sin(k) * rr + 0.5]; }
     if (post === 'board' && v.board) return [v.board[0] - 1.5, v.y + 1, v.board[2] + 1.5];
+    if (post === 'gate' && v.roads && v.roads.length) { const r = (N.dir != null && v.roads.find(q => q.d === N.dir)) || v.roads[(N.road || 0) % v.roads.length], c = r.cells[Math.max(0, r.cells.length - 4)]; return [c[0] + 0.5, null, c[1] + 0.5]; }
     const [type, nth] = String(post).split('#');
     const blds = v.blds.filter(b => b.type === type), b = blds[(+nth || 0) % Math.max(1, blds.length)];
+    if (b && N.bpos) { const w = vWorld(b, N.bpos[0], 1, N.bpos[1]); return [w[0] + 0.5, w[1], w[2] + 0.5]; }
     if (b) { const w = b.work ? b.work.at : b.elderAt ? b.elderAt.at : vWorld(b, (b.W - 1) / 2, 1, 2); return [w[0] + 0.5, w[1], w[2] + 0.5]; }
     return [v.x + 2.5, v.y + 1, v.z + 2.5];
   }
-  if (N.place) { const P = C.places[N.place]; if (P) { const o = N.offset || [3, 3]; return [P.at[0] + o[0] + 0.5, null, P.at[1] + o[1] + 0.5]; } }
+  if (N.dungeon) { const at = campDungeonSpot(g, N.dungeon, N.room, N.offset); return at ? [at[0] + 0.5, at[1], at[2] + 0.5] : null; }
+  if (N.place) {
+    const P = C.places[N.place]; if (!P) return null;
+    const o = N.offset || [3, 3];
+    if (N.siteY != null && g.world && g.world.gen.campSites) { const s = g.world.gen.campSites().find(q => q.place === N.place); if (s) return [P.at[0] + o[0] + 0.5, s.y + N.siteY, P.at[1] + o[1] + 0.5]; }
+    return [P.at[0] + o[0] + 0.5, null, P.at[1] + o[1] + 0.5];
+  }
   return null;
+}
+// a spot in a campaign dungeon: room 'boss' | 'entry' | 'hall#1' (the second hall) | a number, and an offset in it
+function campDungeonSpot(g, placeId, room, offset) {
+  const d = campDungeon(g, placeId); if (!d) return null;
+  let r = null;
+  if (typeof room === 'number') r = d.rooms[room % d.rooms.length];
+  else { const [kind, nth] = String(room || 'boss').split('#'); const list = d.rooms.filter(q => q.kind === kind); r = list.length ? list[(+nth || 0) % list.length] : d.rooms.find(q => q.kind === 'boss'); }
+  if (!r) return null;
+  const o = offset || [0, 0];
+  return [r.x + Math.max(-r.R, Math.min(r.R, o[0])), r.y, r.z + Math.max(-r.R, Math.min(r.R, o[1]))];
 }
 function campNpcTick(g, dt) {
   const C = campDef(g); if (!C || g.isGuest || g.dim !== 0 || !g.world) return;
@@ -566,6 +614,7 @@ function campNpcTick(g, dt) {
   let i = 0;
   for (const [id, N] of Object.entries(C.npcs)) {
     i++;
+    if (N.prop) continue;   // an object, not a person (campaign/extras.js puts it in the world)
     const ent = CAMP_RT.ents.get(id);
     const want = !S.gone[id] && (!N.if || campTest(g, N.if)) && !(N.until && campTest(g, N.until));
     if (ent && (!ent.alive || ent.remove || !g.entities.includes(ent))) { CAMP_RT.ents.delete(id); if (!ent.alive && N.mortal) S.gone[id] = 1; continue; }
@@ -590,7 +639,7 @@ function campNpcTick(g, dt) {
     e.npc = { v: v ? v.id : 'camp', i: 400 + i, n: N.name, j: 'c_' + id, s: seed, p: 0, cid: id };
     e.heldItem = N.held && ITEMS[N.held] ? N.held : null;
     if (N.armor) e.npcArmor = N.armor;
-    e.persistent = true; e.campPost = [at[0], at[1], at[2]]; e.kept = false;
+    e.persistent = true; e.campPost = [at[0], at[1], at[2]]; e.kept = false; e.campSeek = !!N.seek && !S.flags['_seek_' + id];
     if (N.hp) { e.health = e.maxHealth = N.hp; }
     g.addEntity(e);
     CAMP_RT.ents.set(id, e);
@@ -611,6 +660,11 @@ function campNpcTick(g, dt) {
       let best = null, bd = 1e9; for (const p of ps) { const d = Math.hypot(p.x - this.x, p.z - this.z); if (d < bd) { bd = d; best = p; } }
       if (best && bd > 40) { this.x = best.x + 1; this.z = best.z + 1; this.y = best.y; }
       else if (best && bd > 3.2) target = [best.x, best.y, best.z];
+    } else if (this.campSeek) {
+      // someone looking for you: they come straight up to the nearest of the party, then wait there
+      let best = null, bd = 1e9; for (const p of ps) { const d = Math.hypot(p.x - this.x, p.z - this.z); if (d < bd) { bd = d; best = p; } }
+      if (best && bd < 48 && bd > 2.6) target = [best.x, best.y, best.z];
+      else if (best && bd <= 2.6) { this.campSeek = false; S.flags['_seek_' + N.cid] = 1; this.campPost = [this.x, this.y, this.z]; const D = campDef(g).npcs[N.cid]; if (D && D.hail) for (const l of g.locals) if (Math.hypot(l.player.x - this.x, l.player.z - this.z) < 12) l.toast(`${D.name}: “${D.hail}”`, 'epic'); }
     } else if (this.campPost) {
       const [px, py, pz] = this.campPost, d = Math.hypot(px - this.x, pz - this.z);
       if (d > 2.5) target = [px, py, pz];
@@ -686,7 +740,7 @@ function campNpcTick(g, dt) {
       const onceKey = '_o_' + id + '_' + nid + '_' + k;
       if (o.once && used[onceKey]) continue;
       let label = esc(campFill(this, o.check ? String(o.t).replace(/^\[[^\]]+\]\s*/, '') : o.t));
-      if (o.check) { const ck = o.check, nm = ck.skill ? DND_SKILLS[ck.skill].name : ck.save ? DND_ABILITY_NAMES[ck.save] + ' save' : DND_ABILITY_NAMES[ck.ability]; label = `<span class="nt-check">[${nm}${ck.showDc === false ? '' : ' DC ' + ck.dc}]</span> ` + label; }
+      if (o.check) { const ck = o.check, nm = ck.skill ? DND_SKILLS[ck.skill].name : ck.save ? DND_ABILITY_NAMES[ck.save] : DND_ABILITY_NAMES[ck.ability]; const sc = campCheckScore(this.lp, ck), ok = sc >= ck.dc; label = `<span class="nt-check ${ok ? 'ok' : 'no'}">[${nm} ${ck.dc}${ck.showDc === false ? '' : ` · you ${sc}`}]</span> ` + label; }
       opts.push([label, () => {
         if (o.once) { used[onceKey] = 1; campChanged(this.g); }
         if (o.check) { this.campCheck(o); return; }
@@ -704,28 +758,36 @@ function campNpcTick(g, dt) {
     }
     this.options(opts);
   };
+  // (alpha 2) a skill check is your character's measure against what the moment asks: no dice. Your score is 10 plus your
+  // bonus in the skill (or ability, or save), a little more with an edge (Guidance, Bardic Inspiration, Bless, a boon),
+  // and the option shows both, so you know before you choose.
   NpcTalk.prototype.campCheck = function (o) {
     const ck = o.check, lp = this.lp, c = lp.player.stats && lp.player.stats.dnd;
-    let mod = 0, label = '';
-    if (c) {
-      dndDerive(c, lp.player.inv);
-      if (ck.skill) { mod = c.d.skills[ck.skill]; label = DND_SKILLS[ck.skill].name; }
-      else if (ck.save) { mod = c.d.saves[ck.save]; label = DND_ABILITY_NAMES[ck.save] + ' saving throw'; }
-      else if (ck.ability) { mod = c.d.mods[ck.ability]; label = DND_ABILITY_NAMES[ck.ability] + ' check'; }
-    } else label = ck.skill ? DND_SKILLS[ck.skill].name : 'Check';
-    const bonus = dndCheckBonus(lp, true);
-    const opts = this.el.querySelector('.nt-opts'); if (opts) opts.innerHTML = '';
-    dndRollShow(lp.el, { label: label + ' check'.replace(/ check check$/, ' check'), mod, dc: ck.dc, adv: ck.adv || (c && c.conds.advNext), dis: ck.dis, lucky: c && DND_SPECIES[c.species].lucky, bonus }).then((res) => {
-      if (!this.el.isConnected) return;
-      const ok = res.ok;
-      const branch = ok ? (ck.pass || o.go) : (ck.fail || o.go);
-      if (ok && ck.passDo) campDo(this.g, ck.passDo, lp, { npc: this.e.npc.cid });
-      if (!ok && ck.failDo) campDo(this.g, ck.failDo, lp, { npc: this.e.npc.cid });
-      if (o.do) campDo(this.g, o.do, lp, { npc: this.e.npc.cid });
-      if (ok && ck.xp) campXp(this.g, ck.xp, label);
-      if (branch) this.campNode(branch); else this.close();
-    });
+    const score = campCheckScore(lp, ck, true), ok = score >= ck.dc;
+    const nm = ck.skill ? DND_SKILLS[ck.skill].name : ck.save ? DND_ABILITY_NAMES[ck.save] : ck.ability ? DND_ABILITY_NAMES[ck.ability] : 'Check';
+    if (c && c.conds) { delete c.conds.guidance; delete c.conds.bardic; delete c.conds.advNext; }
+    lp.toast(`${nm} ${score} against ${ck.dc}: ${ok ? 'success' : 'not enough'}`, ok ? 'good' : 'warn');
+    if (typeof dndSound === 'function') try { dndSound(ok ? 'land' : 'fail'); } catch (e) { /* no sound */ }
+    const branch = ok ? (ck.pass || o.go) : (ck.fail || o.go);
+    if (ok && ck.passDo) campDo(this.g, ck.passDo, lp, { npc: this.e.npc.cid });
+    if (!ok && ck.failDo) campDo(this.g, ck.failDo, lp, { npc: this.e.npc.cid });
+    if (o.do) campDo(this.g, o.do, lp, { npc: this.e.npc.cid });
+    if (ok && ck.xp) campXp(this.g, ck.xp, nm);
+    if (branch) this.campNode(branch); else this.close();
   };
+}
+function campCheckScore(lp, ck, use) {
+  const c = lp && lp.player.stats && lp.player.stats.dnd; if (!c) return 10;
+  dndDerive(c, lp.player.inv);
+  let mod = 0;
+  if (ck.skill) mod = c.d.skills[ck.skill]; else if (ck.save) mod = c.d.saves[ck.save]; else if (ck.ability) mod = c.d.mods[ck.ability];
+  let edge = 0;
+  if (c.conds.guidance) edge += 2;
+  if (c.conds.bardic) edge += Math.ceil((c.conds.bardic + 1) / 2);
+  if (c.conds.bless) edge += 2;
+  if (ck.adv || c.conds.advNext) edge += 4;
+  if (ck.dis) edge -= 4;
+  return 10 + mod + edge;
 }
 // {p} the speaker's name, {cls} their class, {species}, {v} the town
 function campFill(talk, text) {
@@ -900,8 +962,9 @@ function campQuestRows(g) {
     const s = 1 << m.scale, S = campState(g);
     const add = (at, label, cell) => { if (!at) return; const u = (at[0] - m.x0) / s, v = (at[1] - m.z0) / s; if (u < 0 || v < 0 || u > MAP_N || v > MAP_N) return; out.push({ cell, u, v, rot: 0, label }); };
     for (const r of campQuestRows(g)) if (!r.done && r.st) { const at = r.st.at ? campPos(C, r.st.at) : r.st.obj && (r.st.obj.reach || r.st.obj.clear || r.st.obj.talk) ? campPos(C, r.st.obj.reach || r.st.obj.clear || r.st.obj.talk) : null; add(at, r.title + ': ' + r.goal, 13); }
-    for (const [tid, T] of Object.entries(C.towns)) if (S.seen[tid] || T.known) add(T.at, T.name, 13);
-    for (const [pid, P] of Object.entries(C.places)) if (S.seen[pid] || P.known) add(P.at, P.name, 13);
+    const K = S.known || {};
+    for (const [tid, T] of Object.entries(C.towns)) if (S.seen[tid] || T.known || K[tid]) add(T.at, T.name, 13);
+    for (const [pid, P] of Object.entries(C.places)) if ((S.seen[pid] || P.known || K[pid]) && !P.hidden) add(P.at, P.name, 13);
     return out;
   };
 }
@@ -925,7 +988,7 @@ Object.assign(LocalPlayer.prototype, {
           ${passed.length ? `<div class="jn-past">${passed.map(p => `<div>✓ ${esc(p.goal || p.text)}</div>`).join('')}</div>` : ''}</div>`;
       }).join('') : `<p class="jn-empty">Nothing yet. ${esc(C.hint || 'Speak with the people around you.')}</p>`;
     } else if (tab === 'people') {
-      const met = Object.keys(S.met).filter(k => C.npcs[k]);
+      const met = Object.keys(S.met).filter(k => C.npcs[k] && !C.npcs[k].prop && !C.npcs[k].unlisted);
       body = met.length ? met.map(k => { const N = C.npcs[k]; return `<div class="jn-person"><b>${esc(N.name)}</b> <span>${esc(N.title || '')}${N.town && C.towns[N.town] ? ' · ' + esc(C.towns[N.town].name) : ''}</span>${N.about ? `<div class="jn-h">${esc(N.about)}</div>` : ''}</div>`; }).join('') : '<p class="jn-empty">You haven\'t met anyone of note yet.</p>';
     } else if (tab === 'letters') {
       body = S.letters.length ? S.letters.map(k => `<button class="btn jn-letter" data-letter="${esc(k)}">✉ ${esc((C.letters[k] || {}).title || k)}</button>`).join('') : '<p class="jn-empty">No letters.</p>';
@@ -938,12 +1001,12 @@ Object.assign(LocalPlayer.prototype, {
     const tabs = [['quests', 'Quests'], ['people', 'People'], ['places', 'Places'], ['letters', 'Letters'], ['log', 'Log']];
     el.innerHTML = `<div class="sk-card jn-card"><div class="sk-head"><span class="sk-title">${esc(C.title)}</span><span class="sk-total">${c ? esc(dndSummary(c)) : esc(this.name)}</span></div>
       <div class="jn-tabs">${tabs.map(([k, n]) => `<button class="btn tiny${k === tab ? ' on' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>
-      <div class="jn-body">${body}</div><div class="sk-hint">J to close · C for your character sheet</div></div>`;
+      <div class="jn-body">${body}</div><div class="sk-hint">J to close · C for your character sheet · controller: LB/RB tabs, d-pad and A to read a letter, B to close</div></div>`;
     el.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       if (e.target === el) { this.closeJournal(); return; }
       const t = e.target.closest('[data-tab]'); if (t) { this.openCampJournal(t.dataset.tab); return; }
-      const L = e.target.closest('[data-letter]'); if (L) { this.closeJournal(); new BookUI(this, L.dataset.letter); }
+      const L = e.target.closest('[data-letter]'); if (L) { this.closeJournal(); campOpenBook(this, L.dataset.letter); }
     });
     this.el.appendChild(el);
     this.g.sfx.play('map_paper');
@@ -960,6 +1023,10 @@ PV.debug.camp = {
   npcs: () => [...CAMP_RT.ents.entries()].map(([k, e]) => [k, +e.x.toFixed(1), +e.y.toFixed(1), +e.z.toFixed(1)]), town: (t) => { const v = campTownVillage(GAME, t); return v && { id: v.id, name: v.name, x: v.x, z: v.z, blds: v.blds.map(b => b.type) }; },
   dungeon: (p) => { const d = campDungeon(GAME, p); return d && { id: d.id, name: d.name, ent: d.ent, boss: d.boss, place: d.place }; },
   do: (fx) => campDo(GAME, fx, GAME.locals[0]), pos: (r) => campPos(campDef(GAME), r),
+  spot: (p, room, off) => campDungeonSpot(GAME, p, room, off), post: (id) => campNpcPost(GAME, campDef(GAME), id, campDef(GAME).npcs[id]),
+  propSpot: (id) => campPropSpot(GAME, campDef(GAME), id, campDef(GAME).npcs[id]), test: (c) => campTest(GAME, c, GAME.locals[0]),
+  sites: () => GAME.world.gen.campSites().map(s => ({ place: s.place, x: s.x, y: s.y, z: s.z, bossAt: s.bossAt || null })),
+  talk: (id) => { const lp = GAME.locals[0], C = campDef(GAME), N = C.npcs[id]; if (N.prop) { if (!campState(GAME).props[id]) return 'no prop'; campOpenProp(lp, id); return 'prop'; } const e = CAMP_RT.ents.get(id); if (!e) return 'no npc'; lp.openNpcUI(() => new NpcTalk(lp, e)); return 'npc'; },
 };
 
 // handles for automated play-tests

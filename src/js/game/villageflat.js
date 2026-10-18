@@ -39,10 +39,10 @@
   function vFlatten(gen, v) {
     v.flat = vFlatDecide(gen, v);
     if (!v.flat) return;
-    const y0 = v.y, P = VPLAZA;
+    const y0 = v.y, P = v.P || VPLAZA;
     v.biome = baseCol.call(gen, v.x, v.z).biome;
     const R = v.flatRects = [[v.x - P - 2, v.z - P - 2, v.x + P + 2, v.z + P + 2]];
-    for (const road of v.roads) {
+    for (const road of v.roads.concat(v.streets || [])) {
       let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
       for (const c of road.cells) { c[2] = y0; x0 = Math.min(x0, c[0]); z0 = Math.min(z0, c[1]); x1 = Math.max(x1, c[0]); z1 = Math.max(z1, c[1]); }
       if (x0 <= x1) R.push([x0 - 2, z0 - 2, x1 + 2, z1 + 2]);
@@ -55,10 +55,13 @@
         for (const bd of b.beds) shift(bd, dy);
         shift(b.work, dy); shift(b.elderAt, dy);
         if (Array.isArray(b.mid) && !moved.has(b.mid)) { moved.add(b.mid); b.mid[1] += dy; }
+        for (const s of b.seats || []) if (!moved.has(s)) { moved.add(s); s[1] += dy; }
         b.y = y0;
       }
       R.push([b.x0 - 2, b.z0 - 2, b.x1 + 2, b.z1 + 2]);
     }
+    // (alpha 2) a town's walls stand on level ground too
+    if (v.wall) { const W = v.wall, m = 3; R.push([W.x0 - m, W.z0 - m, W.x1 + m, W.z0 + m], [W.x0 - m, W.z1 - m, W.x1 + m, W.z1 + m], [W.x0 - m, W.z0 - m, W.x0 + m, W.z1 + m], [W.x1 - m, W.z0 - m, W.x1 + m, W.z1 + m]); }
     let fx0 = 1e9, fz0 = 1e9, fx1 = -1e9, fz1 = -1e9;
     for (const r of R) { fx0 = Math.min(fx0, r[0]); fz0 = Math.min(fz0, r[1]); fx1 = Math.max(fx1, r[2]); fz1 = Math.max(fz1, r[3]); }
     v.fb = [fx0 - VF_R - 1, fz0 - VF_R - 1, fx1 + VF_R + 1, fz1 + VF_R + 1];

@@ -1,49 +1,87 @@
 # The Shadowbloom of Eldenwood
 
-**Version:** Alpha 0.1.0.1 · built on DokuQuest 0.9.0.57
-**Status:** Alpha — ready to test-play. Things will change, and you may meet a bug or two.
+**Current version:** Alpha 0.1.0.2
+**Status:** Alpha. The whole campaign is in and ready to play from start to finish, but things will change and you may meet a bug or two.
 
-A Dungeons & Dragons–style campaign played in a voxel world. Make a hero, step into the Eldenwood, and play the story with up to four friends on one screen, or over your home network or the internet.
+![A party of heroes in the square at Stonebridge](screenshots/heroes.png)
 
-## What's in it
+## What is it?
 
-- **A character creator** — nine species, twelve classes, ten backgrounds; ability scores by standard array, point buy or 4d6; skills; and a looks editor (body, skin, hair, beard, eyes, ears, horns, markings, outfits and colours). No skin file needed. Each split-screen player makes their own with their own controller.
-- **The d20 decides** — attack rolls against armour class both ways, weapon dice, critical hits, resistances, death saving throws, levels 1–20.
-- **Spells and features** — 69 SRD spells cast in real time with spell slots and concentration; class features (Rage, Second Wind, Lay on Hands, Bardic Inspiration, Wild Shape, Channel Divinity…) and species features (Breath Weapon, Adrenaline Rush, Stonecunning…).
-- **The campaign** — towns where the story puts them, named people with dialogue trees and on-screen skill checks, quests in stages, a journal of quests, people, places and letters, narration at the start and the end. One story per world, shared by the whole party.
-- **Everything DokuQuest does** — an endless world to dig and build in, creatures, villages, dungeons, portals to other realms, split screen (2–4), LAN, online and a dedicated server.
+The Shadowbloom of Eldenwood is a fantasy role-playing game in the spirit of a tabletop campaign, set in a world made of blocks.
+
+Something is wrong in the Eldenwood. A strange bloom is creeping through the forest, the towns along the old roads are whispering about lights in the trees and dreams that don't feel like dreams, and a letter is waiting for you that seems to know your name. You wake on the road outside Stonebridge with your pack, your wits and whatever you can do with a sword, a bow or a spell. Where it goes from there is for you to find out.
+
+Make your hero first: pick from nine peoples and twelve classes, give them a past, and dress them how you like, down to the length of their beard. Then step into a world that goes on as far as you care to walk. There are walled towns and quiet villages full of people going about their day, roads and ruins and forests, things that hunt at night, and a story told across three acts, with more than one way it can end.
+
+Play it alone, or bring the whole party: up to four players on one screen, or friends over your home network or the internet.
+
+## Features
+
+- **A real campaign:** a full story from the first letter to the last page, with named people who remember you, conversations where your skills open doors, side quests, letters and dreams, a journal that keeps track of it all, and choices that matter at the end.
+- **Make your hero, the Hytale way:** your hero stands on the main menu, and you make them before you make a world. Nine species (human, elf, dwarf, halfling, gnome, dragonborn, orc, tiefling, goliath), twelve classes and ten backgrounds, each class with its starting kit.
+- **Heroes and townsfolk in 3D:** sculpted hair, beards (all the way down to a proper wizard's beard), hats, hoods, robes that swing as you walk, cloaks that stream out behind you, horns, tails and pointed ears. Armour grows pauldrons, crests and plates, and you can keep your helmet off your head if you'd rather show your face.
+- **Live-action combat:** swing, shoot and cast in real time. Nothing is rolled on screen: a blow that lands, lands, and your skill and their armour decide how hard. Spells, class features (Rage, Second Wind, Lay on Hands, Wild Shape and more) and species gifts like a dragonborn's breath are a key away. Fights get messy, too: limbs can come off.
+- **RPG towns:** Stonebridge is a walled city of side streets and squares; the towns and villages around it each have their own character. Step inside and the detail is there: potions and herbs on the apothecary's shelves, books in the library, weapons on racks and armour on stands at the smithy, and townsfolk eating and drinking at the tavern tables.
+- **Levels and spells:** grow from level 1 to 20, with 69 spells from cantrips upward, spell slots, short and long rests, and new features as you go.
+- **Controller or keyboard and mouse:** every menu, the hero maker, conversations, the journal, letters, shops and the inventory work with either.
+- **Play together:** split screen for **2 to 4 players** (keyboard and mouse or controllers), a world opened to your home network, online play, or a dedicated server. Everyone shares the same story.
+- **Made for GeruDoku:** one click in Settings fetches the classic **[GeruDoku](https://github.com/sybenx/GeruDoku)** resource pack from its own release page, and it covers the 3D armour and clothes too.
+- **A desktop app for Linux and Windows** that keeps itself up to date.
+
+## Screenshots
+
+*In-game pictures are shown with the [GeruDoku](#recommended-resource-pack-gerudoku) resource pack.*
+
+| | |
+|:-:|:-:|
+| ![The main menu](screenshots/menu.png)<br>**The main menu**, with your hero | ![The hero maker](screenshots/hero-maker.png)<br>**The hero maker** |
+| ![Stonebridge from above](screenshots/town.png)<br>**Stonebridge**, a walled city | ![The town square](screenshots/square.png)<br>**The square**, busy by day |
+| ![The inn](screenshots/inn.png)<br>**The inn** and its keeper (everyone wears 3D hair, beards and clothes) | ![The smithy](screenshots/smithy.png)<br>**The smithy**: weapons on the racks, armour on the stands |
+| ![The apothecary](screenshots/apothecary.png)<br>**The apothecary**: potions, herbs and curiosities | ![The library](screenshots/library.png)<br>**The library** |
+| ![A conversation](screenshots/talk.png)<br>**Conversations** where your skills open doors | ![Oakhaven](screenshots/oakhaven.png)<br>**Oakhaven**, a town at the forest's edge |
+
+## Download
+
+Get the newest version from **[Releases](https://github.com/FartGarfunkel/The-Shadowbloom-of-Eldenwood/releases/latest)**:
+
+- **Linux:** `Shadowbloom-…-x86_64.AppImage`. Make it executable and run it.
+- **Windows:** `Shadowbloom-…-windows-x64.zip`. Unzip it anywhere and run `Shadowbloom.exe`.
+- **Just the game:** `shadowbloom.html`. Open it in a browser (Chrome, Edge or Firefox), or install it in the desktop app with Options → Install update…
+
+## Updates
+
+The desktop app checks for a new version each time the launcher opens and installs it by itself. When the app itself changes, Options offers **Update the app**. Your worlds are never touched: they're kept in the app's own folder (`~/.config/Shadowbloom` on Linux, `%APPDATA%\Shadowbloom` on Windows), apart from any DokuQuest install.
 
 ## Controls (keyboard)
 
 | Key | | Key | |
 |---|---|---|---|
-| Z | cast your ready spell | P | character sheet (short rest) |
-| G | next spell | J | journal |
+| Left click | attack | Right click on someone | talk |
+| Z | cast your ready spell | G | ready the next spell |
 | B | class feature | N | species feature |
-| Right click on someone | talk | Left click | attack (an attack roll) |
+| P | character sheet (short rest) | J | journal |
 
-Controller: d-pad up casts, d-pad left changes spell, d-pad right is your class feature, right stick click your species feature. The pause menu also opens the sheet and the journal.
+On a controller: d-pad up casts, d-pad left changes spell, d-pad right is your class feature and a click of the right stick your species feature. The pause menu opens the sheet and the journal too. **How to Play** on the main menu has the rest.
 
-## Download
+## Recommended resource pack: GeruDoku
 
-From **[Releases](https://github.com/FartGarfunkel/The-Shadowbloom-of-Eldenwood/releases/latest)**:
+The Shadowbloom of Eldenwood has its own textures, painted in the spirit of the classic Doku and Gerudoku packs. For the real thing, we recommend **[GeruDoku](https://github.com/sybenx/GeruDoku)**, the classic pack kept up to date by Sybenx and its contributors. It's what the screenshots above are wearing, and the game uses it for its 3D armour and clothes as well as its blocks and items.
 
-- **Linux:** `Shadowbloom-…-x86_64.AppImage` — make it executable and run it.
-- **Windows:** `Shadowbloom-…-windows-x64.zip` — unzip anywhere and run `Shadowbloom.exe`.
-- **Just the game:** `shadowbloom.html` — open it in a browser (Chrome, Edge or Firefox), or install it in the desktop app with Options → Install update…
+- **Desktop app:** the first time it starts, the app fetches GeruDoku from the pack's own GitHub release by itself. You can also press **Settings → Resource pack → Get GeruDoku** at any time, and **Built-in** switches back.
+- **In a browser:** press **Get GeruDoku** to open its release page, download `GeruDoku.1.19.3.v1.zip`, then use **Choose pack (.zip)…** and pick it.
 
-The desktop app keeps itself up to date from this repository. Worlds are kept in `~/.config/Shadowbloom` (Linux) or `%APPDATA%\Shadowbloom` (Windows), apart from any DokuQuest install.
+GeruDoku isn't part of The Shadowbloom of Eldenwood and isn't included with it: the game downloads it from GeruDoku's own release. All credit for its art goes to its authors: see the pack's own credits.
 
 ## The project
 
-- `src/js/dnd/` — the tabletop rules: rules data (SRD 5.2), dice, character sheets, combat, spells, features, the creator and the looks painter.
-- `src/js/campaign/engine.js` — the campaign engine; `src/js/campaign/shadowbloom.js` — the campaign itself (see `notes/campaign-format.md` to edit it).
-- Everything else is DokuQuest's: `src/js/game`, `world`, `render`, `net`, `ui`.
-- Build with `node tools/build.js` → `dist/shadowbloom.html`. Tests: `python3 tools/dnd_test.py OUT` and `python3 tools/dnd_coop_test.py OUT` (Playwright).
+- `src/js/dnd/`: the rules, the hero maker and the looks painter. `src/js/render/gear3d.js`: the 3D gear.
+- `src/js/campaign/`: the campaign engine (`engine.js`, `extras.js`) and the campaign itself (`sb_world.js`, `sb_act1.js` to `sb_act3.js`). See `notes/campaign-format.md` to edit it.
+- `src/js/game/towns.js`: the towns and their interiors. Everything else is DokuQuest's: `src/js/game`, `world`, `render`, `net`, `ui`.
+- Build with `node tools/build.js` → `dist/shadowbloom.html`. Tests (Playwright): `tools/campaign_check.py` (the campaign's connections), `tools/campaign_play.py` (the whole story played by a script), `tools/gear_shot.py`, `tools/menu_shot.py`, `tools/town_test.py`.
 - Pushing to `main` builds the game, packages the desktop apps and publishes a release (`.github/workflows/release.yml`).
 
 ## Credits and licence notes
 
 This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
-Built on DokuQuest. Not affiliated with or endorsed by Wizards of the Coast.
+Built on DokuQuest. Not affiliated with or endorsed by Wizards of the Coast, Hypixel Studios or Mojang.

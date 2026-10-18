@@ -160,7 +160,96 @@
 .qt-camp-box .qt.camp.main b { color: #d8b8ff; }
 .qt.camp span { white-space: normal; text-align: right; max-width: 60%; }
 .nt-check { color: var(--gold); font-weight: 700; }
+.nt-check.ok { color: #8fe38f; }
+.nt-check.no { color: #e8a070; }
+.nt-prop { width: 72px; height: 72px; display: grid; place-items: center; font-size: 42px; color: #c8a8ff; text-shadow: 0 0 12px #8a5ae0; background: radial-gradient(circle, #2a2040 0%, #120e1c 70%); border-radius: 8px; }
 .pf-hero { font-size: 12px; text-align: center; min-height: 30px; } .pf-hero b { display: block; color: var(--gold); } .pf-hero span { color: var(--muted); }
 .hero-screen { display: grid; place-items: center; padding: 12px; background: rgba(8, 6, 4, .8); }
 .hero-screen .dnd-creator { position: relative; inset: auto; width: min(1060px, 100%); height: auto; max-height: 100%; padding: 0; background: none; }
 .hero-close { margin-left: 6px; }
+
+/* ---- (alpha 2) the main menu, the Hytale way: the world behind, the menu on the left, your hero on the right ---- */
+#title.hy-menu { display: block; padding: 0; background: none; overflow: hidden; }
+.hy-shade { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(5, 9, 18, .88) 0%, rgba(5, 9, 18, .62) 26%, rgba(5, 9, 18, .12) 52%, rgba(5, 9, 18, 0) 62%),
+              linear-gradient(0deg, rgba(4, 6, 12, .78) 0%, rgba(4, 6, 12, 0) 34%), linear-gradient(180deg, rgba(4, 6, 12, .45) 0%, rgba(4, 6, 12, 0) 18%); }
+.hy-left { position: absolute; left: clamp(18px, 5vw, 90px); top: clamp(14px, 5vh, 56px); bottom: clamp(40px, 9vh, 90px); width: min(470px, 46vw); display: flex; flex-direction: column; z-index: 2; }
+.hy-logo { width: 100%; }
+.hy-logo #mc-logo { width: 100%; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .7)) drop-shadow(0 0 22px rgba(150, 90, 230, .25)); }
+.hy-logo .mc-splash { right: 2%; bottom: -14%; font-size: clamp(12px, 1.6vw, 18px); color: #ffd36a; text-shadow: 2px 2px 0 #3a2400; }
+.hy-nav { margin-top: auto; display: flex; flex-direction: column; gap: 2px; width: auto; max-width: none; }
+.hybtn { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; padding: 7px 16px 7px 20px; border-left: 3px solid transparent;
+  font-family: var(--font-display); font-size: clamp(24px, 3.4vh, 34px); line-height: 1; letter-spacing: .07em; text-transform: uppercase; color: #ece4d2;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .65), 0 0 16px rgba(0, 0, 0, .5); transition: color .12s, border-color .12s, background .18s, padding .15s; }
+.hybtn > span { display: block; }
+.hybtn > small { font-family: var(--font-ui); font-size: 13px; letter-spacing: .01em; text-transform: none; color: #b8c2d4; text-shadow: 0 1px 2px #000; max-height: 0; opacity: 0; overflow: hidden; transition: max-height .18s, opacity .18s; }
+.hybtn:hover, .hybtn:focus-visible, .hybtn.padfocus { color: #ffd98c; border-left-color: #f2b64a; padding-left: 26px; background: linear-gradient(90deg, rgba(242, 182, 74, .2), rgba(242, 182, 74, 0) 85%); outline: none; }
+.hybtn:hover > small, .hybtn:focus-visible > small, .hybtn.padfocus > small { max-height: 20px; opacity: 1; }
+.hybtn.primary { font-size: clamp(32px, 4.8vh, 48px); color: #fff3d8; margin-bottom: 6px; }
+.hybtn.primary > span::after { content: ' ▶'; font-size: .55em; vertical-align: .25em; color: #f2b64a; }
+.hybtn.hybtn-small { font-size: clamp(18px, 2.4vh, 24px); color: #c9c2b2; }
+.hybtn.lan-served { color: #a8f0a0; }
+.hybtn[hidden], .hybtn-s[hidden] { display: none !important; }
+.hy-row { display: flex; gap: 8px; margin-top: 10px; padding-left: 20px; }
+.hybtn-s { all: unset; box-sizing: border-box; cursor: pointer; padding: 6px 14px; border: 1px solid rgba(242, 182, 74, .45); border-radius: 4px; background: rgba(10, 14, 24, .6);
+  font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: #e8dfca; letter-spacing: .02em; transition: background .12s, color .12s, border-color .12s; }
+.hybtn-s:hover, .hybtn-s:focus-visible, .hybtn-s.padfocus { background: rgba(242, 182, 74, .22); color: #fff1cc; border-color: #f2b64a; outline: none; }
+.hybtn-s.primary { background: linear-gradient(#e7a43c, #b8721e); color: #1e1206; border-color: #ffd58a; }
+.hybtn-s.primary:hover { background: linear-gradient(#f4b850, #c87e22); color: #140b02; }
+.hy-hero { position: absolute; right: clamp(16px, 7vw, 130px); bottom: clamp(44px, 9vh, 96px); width: min(380px, 38vw); display: flex; flex-direction: column; align-items: center; z-index: 2; }
+.hy-hero .hy-stage { width: 100%; height: clamp(260px, 52vh, 520px); }
+.hy-hero .hy-stage .hy-fig { top: 62%; }
+.hy-plinth { width: 72%; height: 26px; margin-top: -20px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(160, 120, 255, .45), rgba(160, 120, 255, .08) 60%, transparent 72%); filter: blur(2px); pointer-events: none; }
+.hy-hero-card { margin-top: 6px; min-width: 260px; max-width: 100%; padding: 10px 16px 12px; text-align: center; display: flex; flex-direction: column; gap: 3px; align-items: center;
+  background: linear-gradient(180deg, rgba(14, 18, 30, .82), rgba(8, 10, 18, .82)); border: 1px solid rgba(242, 182, 74, .38); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); backdrop-filter: blur(3px); }
+.hy-hero-k { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #9fb0c8; }
+.hy-hero-card b { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: #ffe0a2; text-shadow: 0 2px 0 #000; }
+.hy-hero-sub { font-size: 14px; color: #d6d0c2; }
+.hy-hero-btns { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+#title.hy-menu .version { left: auto; right: max(10px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); padding: 4px 10px; border-radius: 4px; background: rgba(8, 12, 22, .6); border: 1px solid rgba(255, 255, 255, .12); color: #d8d2c4; font-size: 13px; }
+#title.hy-menu .title-foot { bottom: max(6px, env(safe-area-inset-bottom)); font-size: 12px; opacity: .8; }
+@media (max-width: 760px) { .hy-left { width: calc(100% - 36px); } .hy-hero { display: none; } .hy-shade { background: linear-gradient(90deg, rgba(5, 9, 18, .85), rgba(5, 9, 18, .4)); } }
+@media (max-height: 520px) { .hybtn { font-size: 20px; padding-top: 4px; padding-bottom: 4px; } .hybtn.primary { font-size: 28px; } .hy-hero .hy-stage { height: 220px; } }
+
+/* the 3D figure: boxes of six faces cut from the skin */
+.hy-stage { position: relative; perspective: 1000px; perspective-origin: 50% 40%; cursor: grab; touch-action: none; }
+.hy-stage:active { cursor: grabbing; }
+.hy-fig { position: absolute; left: 50%; top: 56%; width: 0; height: 0; transform-style: preserve-3d; transform: rotateX(-8deg) rotateY(var(--ry, -20deg)); }
+.hy-fig.spin { animation: hySpin 14s ease-in-out 1; }
+@keyframes hySpin { from { transform: rotateX(-8deg) rotateY(var(--ry, -20deg)); } to { transform: rotateX(-8deg) rotateY(calc(var(--ry, -20deg) + 360deg)); } }
+.hy-box, .hy-limb { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.hy-box > i { position: absolute; left: 0; top: 0; display: block; background-repeat: no-repeat; image-rendering: pixelated; backface-visibility: hidden; }
+.hy-box.over > i { filter: brightness(1.04); }
+.hy-limb.arm { animation: hyArm 3.2s ease-in-out infinite alternate; transform-origin: 0 0; }
+.hy-limb.arm.l { animation-delay: -1.6s; }
+@keyframes hyArm { from { rotate: x 4deg; } to { rotate: x -4deg; } }
+.hy-limb.head { animation: hyHead 6s ease-in-out infinite alternate; }
+@keyframes hyHead { from { rotate: y -6deg; } to { rotate: y 8deg; } }
+
+/* the hero maker as a stage: the pages down the left, the figure big in the middle, the choices on the right */
+.hy-hero-screen { background: radial-gradient(ellipse at 50% 40%, rgba(70, 50, 120, .35), rgba(6, 8, 16, .94) 70%), rgba(6, 8, 16, .9) !important; padding: 0 !important; }
+.hy-hero-screen .dnd-creator.hy { width: 100%; height: 100%; max-height: none; }
+.dnd-creator.hy .cr-card { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; background: none; box-shadow: none;
+  display: grid; grid-template-columns: clamp(170px, 18vw, 240px) minmax(0, 1fr) clamp(360px, 40vw, 560px); grid-template-rows: auto 1fr auto; }
+.dnd-creator.hy .cr-head, .dnd-creator.hy .cr-main { display: contents; }
+.dnd-creator.hy .cr-head > b { grid-column: 1 / 3; grid-row: 1; padding: 18px 24px 4px; font-size: clamp(30px, 5vh, 46px); color: #ffe0a2; text-shadow: 0 3px 0 #000; }
+.dnd-creator.hy .cr-tabs { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 10px 0 10px 18px; align-self: start; }
+.dnd-creator.hy .cr-tab { all: unset; box-sizing: border-box; cursor: pointer; padding: 8px 12px; border-left: 3px solid transparent; font-family: var(--font-display); font-size: clamp(18px, 2.6vh, 24px); letter-spacing: .05em; text-transform: uppercase; color: #cfc6b4; }
+.dnd-creator.hy .cr-tab:hover { color: #ffd98c; background: linear-gradient(90deg, rgba(242, 182, 74, .14), transparent); }
+.dnd-creator.hy .cr-tab.on { color: #ffd98c; border-left-color: #f2b64a; background: linear-gradient(90deg, rgba(242, 182, 74, .24), transparent); }
+.dnd-creator.hy .cr-side { grid-column: 2; grid-row: 2; border: 0; background: none; padding: 0 8px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0; }
+.dnd-creator.hy .hy-stage.big { width: 100%; flex: 1; min-height: 240px; }
+.dnd-creator.hy .hy-stage.big .hy-fig { top: 66%; }
+.cr-side .hy-stage.small { width: 170px; height: 270px; flex: none; }
+.cr-side .hy-stage.small .hy-fig { top: 64%; }
+.dnd-creator.compact .cr-side .hy-stage.small { width: 110px; height: 170px; }
+.dnd-creator.hy .cr-rot { order: 2; margin-top: -10px; }
+.dnd-creator.hy .cr-sum { order: 3; width: min(420px, 100%); padding: 8px 12px; background: rgba(10, 14, 24, .75); border: 1px solid rgba(242, 182, 74, .3); border-radius: 8px; }
+.dnd-creator.hy .cr-sum > b { font-size: 28px; }
+.dnd-creator.hy .cr-body { grid-column: 3; grid-row: 1 / 3; margin: 14px 18px 0 0; padding: 14px 16px; overflow: auto; background: linear-gradient(180deg, rgba(16, 20, 32, .92), rgba(10, 12, 20, .92)); border: 1px solid rgba(242, 182, 74, .3); border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
+.dnd-creator.hy .cr-foot { grid-column: 1 / 4; grid-row: 3; padding: 10px 18px 16px; background: linear-gradient(0deg, rgba(4, 6, 12, .85), transparent); border: 0; }
+.dnd-creator.hy .cr-foot .btn.primary { font-size: 18px; padding: 10px 22px; }
+.dnd-creator.hy .hero-close { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; margin: 14px 12px 0 0; position: static; }
+@media (max-width: 860px) { .dnd-creator.hy .cr-card { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(220px, 40vh) auto auto; } .dnd-creator.hy .cr-head > b { grid-column: 1; } .dnd-creator.hy .cr-tabs { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; padding: 4px 12px; } .dnd-creator.hy .cr-side { grid-column: 1; grid-row: 3; } .dnd-creator.hy .cr-body { grid-column: 1; grid-row: 4; margin: 8px 12px; } .dnd-creator.hy .cr-foot { grid-column: 1; grid-row: 5; } }
+#worlds .hy-chip { margin-left: auto; margin-right: 8px; font-size: 14px; }
+#worlds .hy-chip b { color: #ffd98c; } #worlds .hy-chip i { font-style: normal; color: #9fb0c8; text-decoration: underline; margin-left: 4px; }

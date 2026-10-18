@@ -83,7 +83,7 @@ class DndCreator {
           <div class="cr-stats"><span>HP <b>${c.d.maxHp}</b></span><span>AC <b>${this.kitAC(c)}</b></span><span>Speed <b>${c.d.speed}</b></span><span>Init <b>${dndSigned(c.d.initiative)}</b></span></div>
           <div class="cr-abs">${DND_ABILITIES.map(a => `<span><i>${DND_ABILITY_SHORT[a]}</i><b>${c.ab[a]}</b><em>${dndSigned(dndMod(c.ab[a]))}</em></span>`).join('')}</div></div>
         </div></div>
-      <div class="cr-foot"><button class="btn" data-prev="1" ${s.step === 0 ? 'disabled' : ''}>◀ Back</button><span class="cr-hint">${this.lp && this.lp.pads && this.lp.pads.size ? 'D-pad: move · ◀ ▶ change · A press · LB/RB page' : 'Click to choose · Tab pages with the buttons below'}</span>
+      <div class="cr-foot"><button class="btn" data-prev="1" ${s.step === 0 ? 'disabled' : ''}>◀ Back</button><span class="cr-hint">${(this.lp && this.lp.pads && this.lp.pads.size) || (!this.lp && this.o.g && this.o.g.pads && this.o.g.pads.connected().length) ? 'D-pad: move · ◀ ▶ change · A choose · LB/RB page · B back · Start: finish' : 'Click to choose · Tab pages with the buttons below'}</span>
         ${s.step < CR_STEPS.length - 1 ? '<button class="btn" data-quick="1">Quick start</button><button class="btn primary" data-next="1">Next ▶</button>' : `<button class="btn primary" data-done="1">${esc(this.o.doneLabel || 'Begin the adventure')}</button>`}</div></div>`;
     this.paintDoll();
     this.bind();
@@ -154,14 +154,14 @@ class DndCreator {
   }
   drawLooks() {
     const L = this.s.look, nm = (list, v) => (list.find(x => x[0] === v) || list[0])[1];
-    const sw = (key, cols, cur) => `<div class="cr-row cr-sw" data-swrow="${key}"><span class="cr-l">${{ skin: 'Skin', hairCol: 'Hair colour', eyeCol: 'Eyes', hornCol: 'Horns', c0: 'Main colour', c1: 'Trim', c2: 'Legs', c3: 'Boots' }[key]}</span>${cols.map(c => `<button class="cr-swatch${c.toLowerCase() === String(cur).toLowerCase() ? ' on' : ''}" data-sw="${key}:${c}" style="background:${c}"></button>`).join('')}</div>`;
+    const sw = (key, cols, cur) => `<div class="cr-row cr-sw" data-swrow="${key}"><span class="cr-l">${{ skin: 'Skin', hairCol: 'Hair colour', beardCol: 'Beard colour', eyeCol: 'Eyes', hornCol: 'Horns', c0: 'Main colour', c1: 'Trim', c2: 'Legs', c3: 'Boots' }[key]}</span>${cols.map(c => `<button class="cr-swatch${c.toLowerCase() === String(cur).toLowerCase() ? ' on' : ''}" data-sw="${key}:${c}" style="background:${c}"></button>`).join('')}</div>`;
     const Sp = DND_SPECIES[this.s.species], skins = [...new Set([...(Sp.look.skins || []), ...NPC_SKIN_TONES])].slice(0, 14);
     const palette = ['#2a2a32', '#5a4030', '#8a6a42', '#c8a060', '#e8e0c8', '#e8e8f0', '#9a9aa4', '#4a4a54', '#8a2a2a', '#c04a2a', '#e8c040', '#4a7a2a', '#2a5a3a', '#2a3a8a', '#4a6ae0', '#6a2a8a', '#a02a6a', '#3a2414'];
     return `<div class="cr-looks">
       ${this.row('Body', L.body === 'slim' ? 'Slender' : 'Broad', 'body')}
       ${sw('skin', skins, L.skin)}
       ${this.row('Hair', nm(LOOK_HAIR, L.hair), 'hair')}${sw('hairCol', LOOK_HAIR_COLS, L.hairCol)}
-      ${this.row('Beard', nm(LOOK_BEARD, L.beard), 'beard')}
+      ${this.row('Beard', nm(LOOK_BEARD, L.beard), 'beard')}${L.beard !== 'none' ? sw('beardCol', LOOK_HAIR_COLS, L.beardCol || L.hairCol) : ''}
       ${this.row('Eyes', nm(LOOK_EYES, L.eyes), 'eyes')}${sw('eyeCol', LOOK_EYE_COLS, L.eyeCol)}
       ${this.row('Mouth', nm(LOOK_MOUTH, L.mouth), 'mouth')}
       ${this.row('Markings', nm(LOOK_MARKS, L.marks), 'marks')}
@@ -171,6 +171,7 @@ class DndCreator {
       ${sw('c0', palette, L.cols[0])}${sw('c1', palette, L.cols[1])}${sw('c2', palette, L.cols[2])}${sw('c3', palette, L.cols[3])}
       ${this.row('Headwear', { none: 'None', wizard: 'Wizard\'s hat', feather: 'Feathered cap', circlet: 'Leaf circlet', crown: 'Circlet of gold', hood: 'Hood' }[L.hood ? 'hood' : L.hat] || 'None', 'hat')}
       ${this.row('Cloak', L.cloak ? 'Yes' : 'No', 'cloak')}
+      ${this.row('Helmet', L.helm === 'hide' ? 'Hidden (still worn)' : 'Shown', 'helm')}
       ${this.row('Features', [L.tusks && 'tusks', L.snout && 'snout', L.scales && 'scales', L.tail && 'tail', L.nose && 'big nose'].filter(Boolean).join(', ') || 'None', 'feat')}
     </div>`;
   }
@@ -197,6 +198,7 @@ class DndCreator {
     else if (key === 'outfit') { const ks = Object.keys(LOOK_OUTFITS); L.outfit = ks[(ks.indexOf(L.outfit) + d + ks.length) % ks.length]; L.cols = LOOK_OUTFITS[L.outfit].cols.slice(); }
     else if (key === 'hat') { const hs = ['none', 'hood', 'wizard', 'feather', 'circlet', 'crown'], cur = L.hood ? 'hood' : L.hat || 'none', nx = hs[(hs.indexOf(cur) + d + hs.length) % hs.length]; L.hood = nx === 'hood'; L.hat = nx === 'hood' ? 'none' : nx; }
     else if (key === 'cloak') L.cloak = !L.cloak;
+    else if (key === 'helm') L.helm = L.helm === 'hide' ? 'show' : 'hide';
     else if (key === 'feat') { const sets = [{}, { tusks: true }, { snout: true, scales: true }, { tail: true }, { nose: true }, { scales: true }]; const cur = sets.findIndex(o => JSON.stringify(o) === JSON.stringify(Object.fromEntries(['tusks', 'snout', 'scales', 'tail', 'nose'].filter(k => L[k]).map(k => [k, true])))); const nx = sets[(Math.max(0, cur) + d + sets.length) % sets.length]; for (const k of ['tusks', 'snout', 'scales', 'tail', 'nose']) L[k] = !!nx[k]; }
     this.draw();
   }
@@ -210,7 +212,7 @@ class DndCreator {
   setClass(k) {
     const s = this.s; if (s.cls === k) return;
     s.cls = k; if (!s._bgPicked) { s.bg = CR_BG_FOR[k] || s.bg; this.defaultPlus(); }
-    const o = LOOK_CLASS_OUTFIT[k]; if (o) { s.look.outfit = o; s.look.cols = LOOK_OUTFITS[o].cols.slice(); s.look.hat = k === 'wizard' ? 'wizard' : k === 'bard' ? 'feather' : k === 'druid' ? 'circlet' : 'none'; s.look.cloak = ['ranger', 'wizard', 'warlock', 'paladin', 'druid'].includes(k); s.look.hood = false; }
+    const o = LOOK_CLASS_OUTFIT[k]; if (o) { s.look.outfit = o; s.look.cols = LOOK_OUTFITS[o].cols.slice(); s.look.hat = k === 'wizard' ? 'wizard' : k === 'bard' ? 'feather' : k === 'druid' ? 'circlet' : 'none'; s.look.cloak = ['ranger', 'wizard', 'warlock', 'paladin', 'druid'].includes(k); s.look.hood = false; if (k === 'wizard' && !['elf', 'dragonborn', 'tiefling'].includes(s.species) && ['none', 'stubble', 'short', 'long'].includes(s.look.beard)) s.look.beard = 'wizard'; s.look.helm = s.look.hat !== 'none' ? 'hide' : 'show'; }
     if (s.method !== 'buy') this.suggest();
     this.s.skills = []; this.autoSkills(); this.draw();
   }
@@ -264,12 +266,18 @@ class DndCreator {
     if (this.o.onDone) this.o.onDone(c, skinURL, s.look.body === 'slim' ? 'slim' : 'classic', tpl);
   }
   // ---- controllers ----
+  // (controller) the page's first choice, rather than the page tabs
+  selBody() { const F = this._f || this.focusables(), i = F.findIndex(b => b.closest('.cr-body')); if (i >= 0) { this.sel = i; this.mark(); } }
   focusables() { this._f = [...this.el.querySelectorAll('button:not([disabled]), input')].filter(b => b.offsetParent !== null || b.getClientRects().length); return this._f; }
   mark() { const F = this._f || this.focusables(); const pad = this._padUsed || (this.lp && this.lp.pads && this.lp.pads.size); F.forEach((b, i) => b.classList.toggle('padfocus', !!pad && i === this.sel)); const b = F[this.sel]; if (b && b.scrollIntoView && this._padUsed) b.scrollIntoView({ block: 'nearest' }); }
   frame(dt, inp) {
     if (!this.el.isConnected || !inp) return;
-    if (inp.padLB || inp.padRB) { this.s.step = Math.max(0, Math.min(CR_STEPS.length - 1, this.s.step + (inp.padRB ? 1 : -1))); this.sel = 0; this.draw(); return; }
+    if (inp.padLB || inp.padRB) { this.s.step = Math.max(0, Math.min(CR_STEPS.length - 1, this.s.step + (inp.padRB ? 1 : -1))); this.sel = 0; this.draw(); this.selBody(); return; }
+    // Start: to the last page, its finish button picked out
+    if (inp.padStart) { this._padUsed = true; this.s.step = CR_STEPS.length - 1; this.sel = 0; this.draw(); const d = (this._f || []).findIndex(b => b.matches('[data-done]')); if (d >= 0) { this.sel = d; this.mark(); } return; }
     if (inp.padB) { if (this.s.step > 0) this.go(-1); return; }
+    // the first touch of the d-pad lights up the page's first choice
+    if (!this._padUsed && (inp.navX || inp.navY)) { this._padUsed = true; this.selBody(); return; }
     const F = this._f || this.focusables(); if (!F.length) return;
     if (inp.navY) { this._padUsed = true; this.sel = this.nearest(F, inp.navY > 0 ? 'down' : 'up'); this.mark(); }
     if (inp.navX) {
@@ -383,8 +391,8 @@ Object.assign(LocalPlayer.prototype, {
   LocalPlayer.prototype.update = function (dt, inp) {
     const g = this.g;
     if (dndOn(g) && g.state === 'playing' && !this.serverPawn && !dndOf(this.player) && !this.creatorUI && !this.player.dead) {
-      this._crT = (this._crT || 0) + dt;
-      if (this._crT > 0.8 && this.mode === 'play') this.openCreator();
+      if (!this._crAt) this._crAt = performance.now();
+      if (performance.now() - this._crAt > 700 && this.mode === 'play') this.openCreator();
     }
     // nothing hurts you while you're still making yourself
     if (this.creatorUI) { this.player.invuln = 1; this.player.vx *= 0.5; this.player.vz *= 0.5; }

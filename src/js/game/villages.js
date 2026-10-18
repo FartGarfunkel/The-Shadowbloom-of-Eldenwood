@@ -109,9 +109,11 @@ WorldGen.prototype.planVillage = function (rx, rz, F) {
   const grow = (a) => { plan.x0 = Math.min(plan.x0, a[0]); plan.z0 = Math.min(plan.z0, a[1]); plan.x1 = Math.max(plan.x1, a[2]); plan.z1 = Math.max(plan.z1, a[3]); };
   // the buildings still to place: the important ones first
   const want = (F && F.want && F.want.length) ? F.want.filter(k => VTEMPLATES[k]) : ['hall', 'farm', 'smithy', 'house_m', 'library', 'workshop', 'house_s', 'farm', 'pen', 'workshop', 'house_m', 'workshop', 'house_s', 'house_m'];
-  let wi = 0;
+  const wantSigns = (F && F.want && F.signs) ? F.want.map((k, i) => [k, F.signs[i]]).filter(([k]) => VTEMPLATES[k]).map(([, sg]) => sg) : null;
+  let wi = 0, lastW = -1;
   const nextType = () => {
-    if (wi < want.length) return want[wi++];
+    lastW = -1;
+    if (wi < want.length) { lastW = wi; return want[wi++]; }
     if (F && F.small) return null;
     const q = rnd(); return q < 0.3 ? 'house_s' : q < 0.52 ? 'house_m' : q < 0.72 ? 'workshop' : q < 0.9 ? 'farm' : 'pen';
   };
@@ -151,6 +153,7 @@ WorldGen.prototype.planVillage = function (rx, rz, F) {
         if (ok && !F) for (const [qx, qz] of cs) { const h = this.column(qx, qz).h; if (h <= SEA - 1 || Math.abs(h - mid.h) > 6) { ok = false; break; } }
         if (!ok) { wi = Math.max(0, wi - 1); t += 3; continue; }
         const b = { type, r, ox, oz, W: T.W, D: T.D, H: T.H, y: F ? y0 : mid.h, x0: box[0], z0: box[1], x1: box[2], z1: box[3], seed: hash32(this.seed, ox, oz, 4243), job: null, beds: [], work: null };
+        if (wantSigns && lastW >= 0 && wantSigns[lastW]) b.sign = wantSigns[lastW];   // (Shadowbloom) the campaign names its buildings
         if (T.plan) T.plan(b, rnd, st);
         plan.blds.push(b); taken.push(box); grow([box[0] - 2, box[1] - 2, box[2] + 2, box[3] + 2]);
         if (T.H > 3) doors.push(vWorld(b, (T.W - 1) / 2, 0, -1));
@@ -182,6 +185,13 @@ WorldGen.prototype.planVillage = function (rx, rz, F) {
   plan.guards = 2 + (plan.blds.length >= 10 ? 1 : 0);
   plan.golems = plan.blds.length >= 7 ? 1 : 0;
   plan.r = Math.max(plan.x1 - cx, cx - plan.x0, plan.z1 - cz, cz - plan.z0);
+  if (F && F.town) {
+    for (const f of plan.folk) if (f.job === 'elder' || f.job === 'innkeeper' || (F.noJobs && F.noJobs.includes(f.job))) f.job = 'none';
+    if (F.empty) { plan.folk = []; plan.guards = 0; plan.golems = 0; plan.empty = true; plan.stalls = []; }
+    if (F.palisade) plan.palisade = true;
+    if (F.fountain) plan.fountain = F.fountain;
+    if (F.guards != null) plan.guards = F.guards;
+  }
   return plan;
 };
 
@@ -429,6 +439,134 @@ const VTEMPLATES = {
     },
   },
 };
+// (Shadowbloom) the campaign towns' own buildings
+const VB = (k, alt) => (B[k] !== undefined ? k : alt);
+Object.assign(VTEMPLATES, {
+  // a stone watchtower: barracks below, a lookout with battlements at the top, a ladder up the back wall
+  tower: {
+    W: 5, D: 5, H: 17,
+    plan(b) { b.work = vWork(b, 2, 2, 0); },
+    build(S) {
+      const st = S.st, sb = VB('stone_bricks', st.stone), cr = VB('cracked_stone_bricks', sb);
+      S.floor(5, 5, st.stone);
+      for (let ly = 1; ly <= 13; ly++) for (let lz = 0; lz < 5; lz++) for (let lx = 0; lx < 5; lx++) {
+        if (lx !== 0 && lx !== 4 && lz !== 0 && lz !== 4) continue;
+        const slit = (ly === 6 || ly === 10) && (lx === 2 || lz === 2);
+        S.set(lx, ly, lz, slit ? 'glass_pane' : ((lx + ly + lz) % 7 === 0 ? cr : sb));
+      }
+      S.door(2, 0, st.door);
+      for (const ly of [5, 9]) for (let lz = 1; lz <= 3; lz++) for (let lx = 1; lx <= 3; lx++) if (!(lx === 2 && lz === 3)) S.set(lx, ly, lz, st.planks);
+      S.fill(0, 13, 0, 4, 13, 4, sb);
+      for (let ly = 1; ly <= 13; ly++) S.set(2, ly, 3, 'ladder', S.d(2));
+      S.set(2, 13, 3, 'air'); S.set(2, 14, 3, 'air');
+      for (let lz = -1; lz <= 5; lz++) for (let lx = -1; lx <= 5; lx++) if (lx === -1 || lx === 5 || lz === -1 || lz === 5) { S.set(lx, 13, lz, sb); if ((lx + lz) % 2 === 0) S.set(lx, 14, lz, sb); }
+      S.set(1, 14, 1, 'lantern'); S.set(3, 14, 1, 'lantern');
+      S.torch(1, 3, 1, 3); S.torch(3, 3, 1, 1); S.torch(1, 7, 1, 3); S.torch(3, 11, 1, 1);
+      S.chest(1, 1, 3, 1, 'smithy'); S.set(3, 1, 3, 'barrel'); S.set(3, 1, 1, 'crafting_table');
+      vFrontPath(S, 2);
+    },
+  },
+  // the sage's house: a tall stone cottage by the water, ivy on its walls, chimes under the eaves, books to the rafters
+  sage: {
+    W: 7, D: 7, H: 13,
+    plan(b) { b.work = vWork(b, 3, 3, 0); },
+    build(S) {
+      const st = S.st, sb = VB('mossy_stone_bricks', st.stone), sb2 = VB('stone_bricks', st.stone);
+      S.floor(7, 7, sb2);
+      S.walls(7, 7, 7, { wall: sb2, corner: sb, noBeam: true, noBase: true });
+      S.fill(1, 4, 1, 5, 4, 5, st.planks);
+      S.set(1, 4, 5, 'air'); for (let ly = 1; ly <= 4; ly++) S.set(1, ly, 5, 'ladder', S.d(2));
+      const top = S.roof(7, 7, 8);
+      S.door(3, 0, st.door);
+      for (const [x, z] of [[1, 0], [5, 0], [0, 3], [6, 3], [3, 6]]) { S.window(x, 2, z, 7, 7); S.window(x, 6, z, 7, 7); }
+      for (let lz = 2; lz <= 4; lz++) for (let ly = 1; ly <= 3; ly++) { S.set(1, ly, lz, 'bookshelf'); S.set(5, ly, lz, 'bookshelf'); }
+      for (let lx = 2; lx <= 4; lx++) S.set(lx, 5, 5, 'bookshelf');
+      S.set(3, 1, 4, VB('enchanting_table', 'lectern')); S.set(3, 2, 4, 'air');
+      S.set(2, 1, 1, VB('amethyst_cluster', 'candle')); S.set(4, 1, 1, 'candle');
+      S.face(3, 5, 2, 'lectern', 0);
+      // chimes and ivy outside
+      for (const [x, z] of [[-1, 2], [7, 4], [2, -1], [4, -1]]) { S.set(x, 7, z, 'chain'); S.set(x, 6, z, VB('amethyst_cluster', 'lantern')); }
+      for (const [x, z, f] of [[-1, 1, 1], [-1, 5, 1], [7, 1, 3], [7, 5, 3], [1, 7, 0], [5, 7, 0]]) for (let ly = 2; ly <= 7; ly++) if (B.vine !== undefined && (ly + x) % 3) S.set(x, ly, z, 'vine', 0);
+      S.set(2, 2, 0, VB('chiseled_stone_bricks', sb2)); S.set(4, 2, 0, VB('chiseled_stone_bricks', sb2));
+      S.torch(3, 3, 5, 2); S.set(3, 7, 3, 'lantern', 1);
+      S.chimney(5, 7, top, 7);
+      S.porch(3);
+    },
+  },
+  // a second tavern, darker: blackened timber, few windows, a cellar hatch behind the bar
+  tavern: {
+    W: 9, D: 8, H: 11,
+    plan(b, rnd) { b.work = vWork(b, 4, 5, 0); b.beds.push(vBed(b, 7, 6, 2)); b.bedCol = Math.floor(rnd() * 4); },
+    build(S) {
+      const st = S.st, dk = VB('dark_oak_planks', st.planks), dl = VB('dark_oak_log', st.log);
+      S.floor(9, 8, VB('spruce_planks', st.planks));
+      S.walls(9, 8, 4, { wall: dk, corner: dl, noBeam: true });
+      S.roof(9, 8, 5);
+      S.door(4, 0, VB('dark_oak_door', st.door));
+      for (const [x, z] of [[2, 0], [6, 0], [0, 3], [8, 3]]) S.window(x, 2, z, 9, 8);
+      for (let x = 2; x <= 6; x++) if (x !== 4) S.set(x, 1, 4, VB('dark_oak_slab', st.slab), 1);
+      S.set(2, 1, 6, 'barrel'); S.set(3, 1, 6, 'barrel'); S.set(2, 2, 6, 'barrel');
+      S.set(5, 0, 6, VB('dark_oak_trapdoor', st.trapdoor || st.planks), 0);
+      S.bed(7, 6, 2, st.bed[S.b.bedCol % st.bed.length]);
+      const w = 'dark_oak';
+      for (const [x, z] of [[2, 2], [6, 2]]) { if (B[w + '_table']) { S.set(x, 1, z, w + '_table'); S.set(x, 2, z, 'candle'); if (B[w + '_chair']) { S.face(x - 1, 1, z, w + '_chair', 1); S.face(x + 1, 1, z, w + '_chair', 3); } } }
+      S.torch(4, 3, 6, 2); S.torch(1, 3, 2, 3); S.torch(7, 3, 2, 1);
+      S.chest(1, 1, 6, 1, 'tavern');
+      vFrontPath(S, 4); S.set(3, 2, -1, 'lantern', 1); S.set(5, 2, -1, 'lantern', 1);
+    },
+  },
+  // a shop: a counter across the front room, shelves and barrels behind it
+  store: {
+    W: 7, D: 6, H: 10,
+    plan(b, rnd) { b.work = vWork(b, 3, 3, 0); b.beds.push(vBed(b, 5, 4, 2)); b.bedCol = Math.floor(rnd() * 4); },
+    build(S) {
+      const st = S.st; S.floor(7, 6); S.walls(7, 6, 3); const top = S.roof(7, 6, 4);
+      S.door(3, 0, st.door);
+      for (const [x, z] of [[1, 0], [5, 0], [0, 2], [6, 2]]) S.window(x, 2, z, 7, 6);
+      for (let x = 1; x <= 5; x++) if (x !== 3) S.set(x, 1, 2, st.slab, 1);
+      S.face(3, 1, 2, st.trapdoor || st.slab, 0);
+      for (const x of [1, 2]) { S.set(x, 1, 4, 'barrel'); S.set(x, 2, 4, 'barrel'); }
+      S.set(4, 1, 4, 'bookshelf'); S.bed(5, 4, 2, st.bed[S.b.bedCol % st.bed.length]);
+      S.chest(1, 1, 3, 1, 'house'); S.torch(3, 3, 4, 2); S.torch(1, 3, 1, 3);
+      if (!st.flat) S.chimney(3, 6, top, 7);
+      S.porch(3);
+    },
+  },
+  // a little chapel: an altar of candles under a tall window
+  chapel: {
+    W: 7, D: 9, H: 12,
+    plan(b) { b.work = vWork(b, 3, 6, 0); },
+    build(S) {
+      const st = S.st, sb = VB('stone_bricks', st.stone);
+      S.floor(7, 9, sb); S.walls(7, 9, 5, { wall: sb, corner: VB('chiseled_stone_bricks', sb), noBeam: true, noBase: true }); S.roof(7, 9, 6);
+      S.door(3, 0, st.door);
+      for (const z of [2, 4, 6]) { S.window(0, 2, z, 7, 9, true); S.window(6, 2, z, 7, 9, true); }
+      S.set(3, 3, 8, 'glass_pane'); S.set(3, 4, 8, 'glass_pane');
+      S.set(3, 1, 7, VB('chiseled_stone_bricks', sb)); S.set(3, 2, 7, 'candle'); S.set(2, 1, 7, 'candle'); S.set(4, 1, 7, 'candle');
+      for (const z of [2, 3, 4]) { S.set(1, 1, z, st.stairs, S.d(2)); S.set(5, 1, z, st.stairs, S.d(2)); }
+      S.torch(1, 3, 7, 3); S.torch(5, 3, 7, 1);
+      S.porch(3);
+    },
+  },
+  // the council chamber: a long table in a stone hall
+  council: {
+    W: 9, D: 9, H: 12,
+    plan(b) { b.work = vWork(b, 4, 6, 0); },
+    build(S) {
+      const st = S.st, sb = VB('polished_andesite', VB('stone_bricks', st.stone));
+      S.floor(9, 9, VB('stone_bricks', st.stone)); S.walls(9, 9, 5, { wall: sb, corner: VB('stone_bricks', st.stone), noBeam: true, noBase: true }); S.roof(9, 9, 6);
+      S.door(4, 0, st.door);
+      for (const [x, z] of [[2, 0], [6, 0], [0, 3], [0, 6], [8, 3], [8, 6]]) S.window(x, 2, z, 9, 9, true);
+      for (let z = 3; z <= 6; z++) S.set(4, 1, z, B[st.wood + '_table'] ? st.wood + '_table' : st.slab);
+      if (B[st.wood + '_chair']) for (let z = 3; z <= 6; z++) { S.face(3, 1, z, st.wood + '_chair', 1); S.face(5, 1, z, st.wood + '_chair', 3); }
+      if (B.red_carpet !== undefined) for (let z = 1; z <= 7; z++) for (const x of [2, 6]) S.set(x, 1, z, 'red_carpet');
+      S.set(4, 1, 7, 'bookshelf'); S.set(3, 1, 7, 'bookshelf'); S.set(5, 1, 7, 'bookshelf');
+      for (const [x, z, wl] of [[1, 2, 3], [7, 2, 1], [1, 6, 3], [7, 6, 1], [4, 7, 2]]) S.torch(x, 3, z, wl);
+      S.porch(4);
+    },
+  },
+});
+
 // a step of path from the door out to the road
 function vFrontPath(S, lx) {
   const p = S.st.path[0];
@@ -471,6 +609,17 @@ WorldGen.prototype.buildVillageInto = function (ch, v) {
     for (let y = y0 + 1; y <= y0 + 7; y++) put(x, y, z, 0);
     for (let y = y0 - 1; y > 1 && soft(get(x, y, z)); y--) put(x, y, z, 'dirt');
   }
+  if (v.fountain) {
+    // (Shadowbloom) a fountain with a statue on a plinth in the middle of the square
+    for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) {
+      const x = v.x + dx, z = v.z + dz;
+      if (!inC(x, z)) continue;
+      const rim = Math.abs(dx) === 2 || Math.abs(dz) === 2, mid = dx === 0 && dz === 0;
+      put(x, y0 - 1, z, 'stone_bricks'); put(x, y0, z, rim || mid ? 'stone_bricks' : 'water');
+      if (rim) put(x, y0 + 1, z, 'stone_brick_slab');
+      if (mid) { put(x, y0 + 1, z, 'chiseled_stone_bricks'); put(x, y0 + 2, z, 'polished_andesite' in B ? 'polished_andesite' : 'stone_bricks'); put(x, y0 + 3, z, 'polished_andesite' in B ? 'polished_andesite' : 'stone_bricks'); put(x, y0 + 4, z, 'chiseled_quartz_block' in B ? 'chiseled_quartz_block' : 'chiseled_stone_bricks'); }
+    }
+  } else
   for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) {
     const x = v.x + dx, z = v.z + dz;
     if (!inC(x, z)) continue;
@@ -533,9 +682,28 @@ WorldGen.prototype.buildVillageInto = function (ch, v) {
       put(x, b.y, z, found);
       for (let y = b.y - 1; y > 1 && soft(get(x, y, z)); y--) put(x, y, z, found);
     }
-    T.build(vStamp(ch, b, st));
+    const S = vStamp(ch, b, st);
+    T.build(S);
+    // (Shadowbloom) a sign by the door with the building's name
+    if (b.sign) {
+      const dx = (b.W - 1) / 2 + 2, [wx] = vRot(b.r, 0, -1);
+      const i = S.set(dx, 1, -2, 'oak_sign' in B ? 'oak_sign' : 'spruce_sign', wx !== 0 ? 4 : 0);
+      if (i >= 0) { ch.blockEntities.set(i, { type: 'sign', lines: [].concat(b.sign).slice(0, 4).concat(['', '', '', '']).slice(0, 4) }); const below = S.get(dx, 0, -2); if (below === 0 || (below > 0 && !T_SOLID[below])) S.set(dx, 0, -2, st.path[0]); }
+    }
   }
+  if (v.palisade) vPalisade(this, v, put, get, inC, soft);
 };
+// (Shadowbloom) a wooden palisade round a frontier town, with a gate where each road leaves
+function vPalisade(gen, v, put, get, inC, soft) {
+  const m = 5, x0 = v.x0 - m, x1 = v.x1 + m, z0 = v.z0 - m, z1 = v.z1 + m;
+  const gate = (x, z) => v.roads.some(r => { const ax = DXL[r.d], az = DZL[r.d]; return ax ? (Math.abs(z - v.z) <= 2 && Math.sign(x - v.x) === ax) : (Math.abs(x - v.x) <= 2 && Math.sign(z - v.z) === az); });
+  const post = (x, z, hgt, key) => { if (!inC(x, z)) return; const h = gen.column(x, z).h; if (h < SEA) return; for (let y = h + 1; y <= h + hgt; y++) put(x, y, z, key); for (let y = h; y > h - 3 && soft(get(x, y, z)); y--) put(x, y, z, 'dirt'); };
+  const log = 'spruce_log' in B ? 'spruce_log' : 'log';
+  for (let x = x0; x <= x1; x++) for (const z of [z0, z1]) { if (gate(x, z)) { const near = !gate(x - 1, z) || !gate(x + 1, z); if (near) post(x, z, 6, log); continue; } post(x, z, 4, (x + z) % 5 === 0 ? log : 'spruce_fence' in B ? 'spruce_fence' : log); }
+  for (let z = z0 + 1; z < z1; z++) for (const x of [x0, x1]) { if (gate(x, z)) { const near = !gate(x, z - 1) || !gate(x, z + 1); if (near) post(x, z, 6, log); continue; } post(x, z, 4, (x + z) % 5 === 0 ? log : 'spruce_fence' in B ? 'spruce_fence' : log); }
+  // the posts are logs pointed at the top
+  for (let x = x0; x <= x1; x += 5) for (const z of [z0, z1]) if (inC(x, z) && !gate(x, z)) { const h = gen.column(x, z).h; if (h >= SEA) put(x, h + 5, z, 'spruce_fence' in B ? 'spruce_fence' : log); }
+}
 {
   // villages go in after everything else in the overworld
   const baseGen = WorldGen.prototype.generate;

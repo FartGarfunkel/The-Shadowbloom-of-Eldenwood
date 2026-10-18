@@ -130,6 +130,7 @@ const DND_ART = {
   pack: ['................', '................', '.....kkkkkk.....', '....kLAAAAAk....', '...kLAAAAAAAk...', '...kAAAAAAAAk...', '...kaaaaaaaak...', '...kAAALLAAAk...', '...kAAALLAAAk...', '...kAAAAAAAAk...', '...kAAAAAAAAk...', '...kaaaaaaaak...', '....kkkkkkkk....', '................', '................', '................'],
   ration: ['................', '................', '................', '................', '....kkkkkkkk....', '...kLLLLLLLLk...', '...kLAAAAAALk...', '...kAAaAAaAAk...', '...kAAAAAAAAk...', '...kAaAAaAAAk...', '...kaaaaaaaak...', '....kkkkkkkk....', '................', '................', '................', '................'],
   potion: ['................', '.......kk.......', '......kPPk......', '.......kk.......', '......kLLk......', '.....kL..Lk.....', '....kLAAAAAk....', '...kLAAAAAAAk...', '...kAALAAAAAk...', '...kAAAAAAAAk...', '...kAAAAAAaAk...', '....kAAAAAak....', '.....kkkkkk.....', '................', '................', '................'],
+  gem: ['................', '................', '................', '.....kkkkkk.....', '....kLLLAAAk....', '...kLLLAAAAak...', '..kLLAAAAAAAak..', '..kkkkkkkkkkkk..', '...kLAAAAAAak...', '....kLAAAAak....', '.....kAAAAak....', '......kAAak.....', '.......kak......', '........k.......', '................', '................'],
   coin: ['................', '................', '................', '.....kkkkkk.....', '....kLLLLLAk....', '...kLLAAAAAak...', '...kLAALLAAak...', '...kLAALAAAak...', '...kLAALLAAak...', '...kLAAAAAAak...', '....kAaaaaak....', '.....kkkkkk.....', '................', '................', '................', '................'],
 };
 
@@ -145,7 +146,8 @@ function dndPaintArt(p, art, cols) {
   for (const [k, w] of Object.entries(DND_WEAPONS)) {
     const avg = w.dice[0] * (w.dice[1] + 1) / 2;
     defItem(k, { name: w.name, maxStack: w.props.includes('thrown') && k !== 'spear' ? 8 : 1, icon: 'dnd_' + k,
-      tool: { type: 'sword', tier: 3, speed: w.props.includes('heavy') ? 0.8 : w.props.includes('light') ? 1.25 : 1, damage: avg, durability: 400 },
+      // (alpha 2) axes cleave like the game's axes (and take limbs more often); the rest cut and thrust like swords
+      tool: { type: /axe|halberd|glaive/.test(k) ? 'axe' : 'sword', tier: 3, speed: w.props.includes('heavy') ? 0.8 : w.props.includes('light') ? 1.25 : 1, damage: avg, durability: 400 },
       dnd: { dice: w.dice, dmg: w.dmg, props: w.props, ver: w.ver, range: w.range, cat: w.cat },
       desc: `${w.dice[0]}d${w.dice[1]} ${w.dmg}${w.props.length ? ' · ' + w.props.map(p => p === 'two' ? 'two-handed' : p === 'versatile' ? `versatile (${w.ver[0]}d${w.ver[1]})` : p).join(', ') : ''}` });
   }

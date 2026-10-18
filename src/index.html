@@ -74,27 +74,33 @@
     </div>
   </template>
 
-  <!-- title -->
-  <section id="title" class="screen mc-menu">
-    <div class="title-wrap">
-      <div class="mc-logo-wrap">
-        <h1 class="sr-only">Shadowbloom</h1>
+  <!-- title: the world behind, the name and the menu on the left, your hero on the right -->
+  <section id="title" class="screen hy-menu">
+    <div class="hy-shade" aria-hidden="true"></div>
+    <div class="hy-left">
+      <div class="hy-logo mc-logo-wrap">
+        <h1 class="sr-only">The Shadowbloom of Eldenwood</h1>
         <canvas id="mc-logo" aria-hidden="true"></canvas>
         <span class="mc-splash" id="mc-splash" aria-hidden="true"></span>
       </div>
-      <div class="mc-buttons">
-        <button id="btn-lan-served" class="mcbtn lan-served" hidden></button>
-        <button id="btn-play" class="mcbtn">Singleplayer</button>
-        <button id="btn-lan" class="mcbtn">Multiplayer</button>
-        <button id="btn-players-t" class="mcbtn">Heroes</button>
-        <button id="btn-howto" class="mcbtn">How to Play</button>
-        <div class="mc-row" id="title-row">
-          <button id="btn-settings-t" class="mcbtn">Options...</button>
-          <button id="btn-quit-app" class="mcbtn" hidden>Quit Game</button>
-          <button id="btn-fullscreen" class="mcbtn" hidden>Full Screen</button>
+      <nav class="hy-nav mc-buttons" aria-label="Main menu">
+        <button id="btn-lan-served" class="hybtn lan-served" hidden></button>
+        <button id="btn-play" class="hybtn primary"><span>Play</span><small>Your hero, your worlds, the campaign</small></button>
+        <button id="btn-lan" class="hybtn"><span>Multiplayer</span><small>Split screen, LAN and online</small></button>
+        <button id="btn-players-t" class="hybtn"><span>Heroes</span><small>Every player's hero and looks</small></button>
+        <button id="btn-howto" class="hybtn"><span>How to Play</span><small>Controls, combat, the story</small></button>
+        <button id="btn-settings-t" class="hybtn"><span>Settings</span><small>Video, sound, controls</small></button>
+        <div class="hy-row" id="title-row">
+          <button id="btn-quit-app" class="hybtn-s" hidden>Quit Game</button>
+          <button id="btn-fullscreen" class="hybtn-s" hidden>Full Screen</button>
         </div>
-      </div>
+      </nav>
     </div>
+    <aside class="hy-hero" id="hy-hero" aria-label="Your hero">
+      <div class="hy-stage"></div>
+      <div class="hy-plinth" aria-hidden="true"></div>
+      <div class="hy-hero-card"></div>
+    </aside>
     <button class="version" id="version" type="button" title="What's new in this version"></button>
     <p class="title-foot" id="store-status">Opening save storage…</p>
   </section>
@@ -228,9 +234,9 @@
             <dt>N</dt><dd>Species feature: Breath Weapon, Adrenaline Rush, Stonecunning…</dd>
             <dt>P</dt><dd>Character sheet (short rest from here; a night in a bed is a long rest)</dd>
             <dt>J</dt><dd>Journal: quests, people, places, letters</dd>
-            <dt>Right click</dt><dd>On someone: talk. Skill checks roll a d20 — your bonus against the DC</dd>
+            <dt>Right click</dt><dd>On someone: talk. A skill check shows your score against what it asks before you choose</dd>
           </dl>
-          <p class="hint" style="padding:0 0 10px">Every swing and arrow is an attack roll against the creature's armour class; every blow at you, its roll against yours. At 0 hit points you fall and roll death saves: a friend can hold Use on you, or heal you, to bring you back.</p>
+          <p class="hint" style="padding:0 0 10px">Fights are live: a swing, an arrow or a spell that reaches its mark lands, and your skill and their armour decide how hard. Nothing is rolled on screen. At 0 hit points you fall: a friend can hold Use on you, or heal you, to bring you back.</p>
           <h3>Keyboard &amp; mouse</h3>
           <dl class="keys">
             <dt>W A S D</dt><dd>Move (double-tap W or hold Ctrl to sprint)</dd>

@@ -50,10 +50,12 @@ function wayTick(g, dt) {
   for (const p of g.pawns()) {
     const v = villageAtPos(g, p.x, p.z, 48); if (!v || W['v:' + v.id]) continue;
     const s = waySiteFor(g, v); if (!s) continue;
+    // (Shadowbloom) in a campaign the village stones are the old Resonance Anchors
+    const nm = (typeof campDef === 'function' && campDef(g) ? 'Resonance Anchor of ' : 'Waystone of ') + v.name;
     g.world.setBlock(s[0], s[1], s[2], B.waystone, 0);
-    g.world.setEntity(s[0], s[1], s[2], { type: 'waystone', wayId: 'v:' + v.id, name: 'Waystone of ' + v.name });
+    g.world.setEntity(s[0], s[1], s[2], { type: 'waystone', wayId: 'v:' + v.id, name: nm });
     g.entityChanged(s[0], s[1], s[2]);
-    W['v:' + v.id] = { x: s[0], y: s[1], z: s[2], dim: 0, name: 'Waystone of ' + v.name };
+    W['v:' + v.id] = { x: s[0], y: s[1], z: s[2], dim: 0, name: nm };
   }
 }
 function wayAttune(lp, x, y, z) {
@@ -63,12 +65,12 @@ function wayAttune(lp, x, y, z) {
   if (fresh) { lp.toast(`Attuned to the ${W[id].name.replace(/^A /, '')}`, 'good'); g.sfx.play('enchant'); for (let i = 0; i < 24; i++) spellSpark(g, x + 0.5, y + 0.5 + Math.random() * 1.5, z + 0.5, 'mana_arcane', { vx: (Math.random() - 0.5) * 2, vy: 1.5, vz: (Math.random() - 0.5) * 2, life: 0.9, size: 0.08 }); }
   return id;
 }
-function wayCost(d) { return Math.max(1, Math.min(5, Math.ceil(d / 600))); }
+function wayCost(d, g) { if (g && typeof dndOn === 'function' && dndOn(g)) return 0; return Math.max(1, Math.min(5, Math.ceil(d / 600))); }   // (Shadowbloom) free by the d20's rules: there are no experience levels to spend
 function wayGo(lp, id) {
   const g = lp.g, p = lp.player, rec = waysOf(p)[id], w = g.world;
   if (!rec) return;
   if ((rec.dim ?? 0) !== (p.dim ?? g.dim)) { lp.toast('That waystone is in another layer of the world', 'warn'); return; }
-  const d = Math.hypot(rec.x - p.x, rec.z - p.z), cost = wayCost(d);
+  const d = Math.hypot(rec.x - p.x, rec.z - p.z), cost = wayCost(d, g);
   if (!g.creative && (p.level || 0) < cost) { lp.toast(`You need ${cost} level${cost > 1 ? 's' : ''} of experience to go that far`, 'warn'); return; }
   for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) w.ensureChunk((rec.x >> 4) + dx, (rec.z >> 4) + dz);
   if (w.getBlock(rec.x, rec.y, rec.z) !== B.waystone) { delete waysOf(p)[id]; lp.toast('That waystone is gone', 'warn'); return; }
@@ -79,7 +81,7 @@ function wayGo(lp, id) {
     if (y > 0 && Math.abs(y - rec.y) <= 3) { at = [x + 0.5, y, z + 0.5]; break; }
   }
   if (!at) at = [rec.x + 0.5, rec.y + 1, rec.z + 0.5];
-  if (!g.creative) spendLevels(p, cost);
+  if (!g.creative && cost > 0) spendLevels(p, cost);
   if (lp.riding && lp.riding.dismount) lp.riding.dismount(lp);
   for (let i = 0; i < 30; i++) spellSpark(g, p.x, p.y + Math.random() * 1.8, p.z, 'mana_arcane', { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 3, life: 0.8, size: 0.08 });
   p.x = at[0]; p.y = at[1]; p.z = at[2]; p.vx = p.vy = p.vz = 0; p.fallStart = null; p.invuln = Math.max(p.invuln || 0, 1.5);
@@ -105,14 +107,15 @@ class WayMenu {
     const list = Object.entries(W).filter(([id, r]) => id !== this.here && (r.dim ?? 0) === dim).map(([id, r]) => ({ id, r, d: Math.hypot(r.x - p.x, r.z - p.z) })).sort((a, b) => a.d - b.d);
     const here = W[this.here];
     const row = (o, i) => {
-      const cost = wayCost(o.d), ang = Math.atan2(o.r.x - p.x, -(o.r.z - p.z)), dir = DIR_WORDS[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
-      const can = this.g.creative || (p.level || 0) >= cost;
-      return `<div class="way-row${can ? '' : ' poor'}"><div><b>${esc(o.r.name)}</b><span>${Math.round(o.d)} blocks ${dir}</span></div><button class="btn tiny${can ? ' primary' : ''}" data-go="${esc(o.id)}">${i < 9 ? (i + 1) + ' · ' : ''}${this.g.creative ? 'Go' : cost + ' level' + (cost > 1 ? 's' : '')}</button></div>`;
+      const cost = wayCost(o.d, this.g), ang = Math.atan2(o.r.x - p.x, -(o.r.z - p.z)), dir = DIR_WORDS[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
+      const can = this.g.creative || cost === 0 || (p.level || 0) >= cost;
+      return `<div class="way-row${can ? '' : ' poor'}"><div><b>${esc(o.r.name)}</b><span>${Math.round(o.d)} blocks ${dir}</span></div><button class="btn tiny${can ? ' primary' : ''}" data-go="${esc(o.id)}">${i < 9 ? (i + 1) + ' · ' : ''}${this.g.creative || cost === 0 ? 'Go' : cost + ' level' + (cost > 1 ? 's' : '')}</button></div>`;
     };
-    this.el.innerHTML = `<div class="way-card"><div class="way-head"><b>${esc(here ? here.name : 'Waystone')}</b><span>You have ${p.level || 0} level${p.level === 1 ? '' : 's'}</span></div>
+    const dnd = typeof dndOn === 'function' && dndOn(this.g);
+    this.el.innerHTML = `<div class="way-card"><div class="way-head"><b>${esc(this.title || (here ? here.name : 'Waystone'))}</b><span>${dnd ? (this.sub || 'Resonance Anchors you are attuned to') : `You have ${p.level || 0} level${p.level === 1 ? '' : 's'}`}</span></div>
       <div class="way-list">${list.length ? list.map(row).join('') : '<div class="way-empty">No other waystones yet. Use the waystone in each village you find (or one you\'ve made) to attune to it, and you can come and go between them.</div>'}</div>
-      <div class="way-hint">The further, the more it costs (a level for every 600 blocks, at most 5) · E to close</div></div>`;
-    this.el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const id = b.dataset.go; this.close(); wayGo(lp, id); });
+      <div class="way-hint">${dnd ? (this.hint || 'Use any anchor (or the Sending Crystal) to travel to the others you know') : 'The further, the more it costs (a level for every 600 blocks, at most 5)'} · E to close</div></div>`;
+    this.el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const id = b.dataset.go; this.close(); wayGo(lp, id); if (this.onGo) this.onGo(id); });
   }
   frame(dt, inp) {
     if (inp.padB || inp.padStart || inp.inventory) { this.close(); return; }

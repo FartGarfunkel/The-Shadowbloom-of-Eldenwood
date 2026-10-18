@@ -99,6 +99,14 @@ function installedUpdate() {
   try { const html = fs.readFileSync(updatePath(), 'utf8'); const v = verOf(html); if (v && cmpVer(v, bundledVersion) > 0) return { file: updatePath(), version: v }; } catch (e) { /* none */ }
   return null;
 }
+// (alpha 2) the GeruDoku resource pack: downloaded by the app (a web page can't fetch GitHub's release files itself).
+// Only that pack's release files, nothing else.
+ipcMain.handle('ember:fetchPack', async (e, url) => {
+  if (!/^https:\/\/github\.com\/sybenx\/GeruDoku\/releases\/download\/[\w.-]+\/[\w.-]+\.zip$/i.test(String(url))) throw new Error('not an allowed pack');
+  const r = await net.fetch(url);
+  if (!r.ok) throw new Error('download failed (' + r.status + ')');
+  return new Uint8Array(await r.arrayBuffer());
+});
 ipcMain.handle('ember:version', () => { const u = installedUpdate(); return u ? u.version : bundledVersion; });
 // The news comes from the game file that Play will run, so an installed update brings its own notes.
 ipcMain.handle('ember:news', () => {

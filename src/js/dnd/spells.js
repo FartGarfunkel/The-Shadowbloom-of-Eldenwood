@@ -126,15 +126,12 @@ class DndBolt extends Entity {
   glow(out) { const uv = tileUV(ATLAS.tile[this.fx] ?? ATLAS.tile.white); out.push({ x: this.x, y: this.y, z: this.z, size: 0.34 + Math.sin(this.age * 40) * 0.05, uv, light: 0xFF }); out.push({ x: this.x, y: this.y, z: this.z, size: 0.55, uv: tileUV(ATLAS.tile.mana_arcane ?? ATLAS.tile.white), light: 0xFF }); }
 }
 
-// a spell attack roll against a creature: hit or miss, crit or not
+// a spell that reaches a creature lands (alpha 2: live action); now and then it strikes true and hits twice as hard
 function dndSpellAttackRoll(lp, c, e) {
   const { adv, dis } = dndAdvAgainst(lp, e, c);
-  const R = dndD20({ mod: c.d.spellAtk, adv: adv || c.conds.innate > 0, dis, lucky: DND_SPECIES[c.species].lucky, bonus: c.conds.bless ? dndDie(4) : 0 });
-  const ac = dndMobAC(e) + (e.dndAcBonus || 0);
-  const hit = !R.nat1 && (R.nat20 || R.total >= ac);
-  if (!hit) lp.floatText(e.x, e.y + e.h + 0.3, e.z, `Miss (${R.total})`, '#b8b8c0');
-  if (e.dndMark && e.dndMark.guided > 0 && hit) e.dndMark.guided = 0;
-  return { hit, crit: R.nat20 };
+  const crit = Math.random() < dndCritChance(c, adv || c.conds.innate > 0, dis);
+  if (e.dndMark && e.dndMark.guided > 0) e.dndMark.guided = 0;
+  return { hit: true, crit };
 }
 function dndRollSpellDmg(dice, crit, plus = 0) { return dndRoll(dice[0] * (crit ? 2 : 1), dice[1], plus).total; }
 // a creature's effects from a spell that landed

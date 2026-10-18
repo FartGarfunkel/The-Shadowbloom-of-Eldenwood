@@ -184,6 +184,13 @@ function npcSkinCanvas(seed, job) {
   const leg = (f, x, y) => f === 'top' ? (J.robe ? shirt : trousers) : f === 'bottom' ? boots : y >= 10 ? boots : J.robe ? (y === 9 ? shirtD : shirt) : trousers;
   box(0, 16, 4, 12, 4, leg); box(16, 48, 4, 12, 4, leg);
   if (J.apron && !J.robe) { const a = H(J.apron); for (const [u, v] of [[0, 32], [0, 48]]) box(u, v, 4, 12, 4, (f, x, y) => f === 'front' && y < 7 ? a : null); }
+  // (alpha 2) what they wear in 3D: hair, beard, hat, hood, robe, apron, tabard (render/gear3d.js)
+  if (typeof gearWrite === 'function') gearWrite(cv, {
+    species: 'human', hair: ['short', 'long', 'crop', 'tail', 'short'][style] || 'short', hairCol: hair, beard: J.elder ? 'long' : ['none', 'stubble', 'short', 'long'][beard] || 'none', skin,
+    hood: !!J.hood, hat: ['straw', 'cap', 'bucket', 'chef'].includes(J.hat) ? J.hat : 'none', feather: !!J.feather, robe: !!J.robe, apron: !!(J.apron && !J.robe), tabard: !!J.tabard, elder: !!J.elder,
+    cols: [shirt, shirtD, trousers, boots], extra: J.apron ? H(J.apron) : J.hood ? H(J.hood) : J.tabard ? H('#2a4a8a') : shirtD,
+    hatCol: J.hat === 'straw' ? H('#d8b860') : J.hat === 'chef' ? [250, 250, 248] : hatCol || H('#5a4a3a'), ears: 'round', horns: 'none', outfit: null,
+  });
   return cv;
 }
 const NPC_SKINS = new Map();
@@ -471,7 +478,7 @@ Object.assign(Mob.prototype, {
 const NPC_P = { sleep: 1, sit: 2, wave: 4, talk: 8, work: 16, read: 32, fold: 64, hoe: 128 };
 function npcPickSpot(g, v, e, kind) {
   const r = Math.random;
-  if (kind === 'plaza') { const a = r() * TAU, d = 3 + r() * 3.5; return [v.x + 0.5 + Math.cos(a) * d, v.y + 1, v.z + 0.5 + Math.sin(a) * d]; }
+  if (kind === 'plaza') { const lo = (v.fr || 1) + 2, a = r() * TAU, d = lo + r() * Math.max(1.5, (v.P || 7) - 2 - lo); return [v.x + 0.5 + Math.cos(a) * d, v.y + 1, v.z + 0.5 + Math.sin(a) * d]; }
   // somewhere along a road
   const road = v.roads[Math.floor(r() * v.roads.length)];
   const c = road.cells[Math.floor(r() * road.cells.length)];
@@ -525,7 +532,7 @@ function npcBrain(e, dt, p, dist) {
   else if (folk && folk.work && (ph < 0.3 || (shop && ph < 0.46))) { goal = folk.work.at; act = 'work'; }
   else if (ph >= 0.43 && v.seats && v.seats.length) {
     const s = v.seats[N.i % v.seats.length];
-    goal = [s[0] + DXL[s[3]], s[1], s[2] + DZL[s[3]]]; act = 'sit';        // walk up to the bench, then sit down on it
+    goal = s[4] ? [s[4][0], s[1], s[4][1]] : [s[0] + DXL[s[3]], s[1], s[2] + DZL[s[3]]]; act = 'sit';        // walk up to the bench (or the chair), then sit down on it
     if (N.i >= v.seats.length) { act = 'social'; goal = null; }
   } else act = 'social';
   if (act === 'social') {
@@ -557,7 +564,7 @@ function npcBrain(e, dt, p, dist) {
       return { want: 0, dir: e.yaw };
     }
     // (0.9.0.11) on the seat the way you sit on one: half a block up, held still (no physics fighting the stair)
-    if (act === 'sit') { const s = v.seats[N.i % v.seats.length]; e.x = s[0] + 0.5; e.z = s[2] + 0.5; e.y = s[1] + 0.25; e.vx = e.vy = e.vz = 0; e.yaw = Math.atan2(-DXL[s[3]], -DZL[s[3]]); N.p |= NPC_P.sit; e.pinned = true; e.path = null; return { want: 0, dir: e.yaw }; }
+    if (act === 'sit') { const s = v.seats[N.i % v.seats.length]; e.sitHeld = s[5] || null; e.x = s[0] + 0.5; e.z = s[2] + 0.5; e.y = s[1] + 0.25; e.vx = e.vy = e.vz = 0; e.yaw = Math.atan2(-DXL[s[3]], -DZL[s[3]]); N.p |= NPC_P.sit; e.pinned = true; e.path = null; return { want: 0, dir: e.yaw }; }
     if (act === 'work') {
       const f = folk.work.face; e.yaw = turnTo(e.yaw, Math.atan2(-DXL[f], -DZL[f]), dt * 6);
       if (J.work === 'read') N.p |= NPC_P.read;
@@ -652,7 +659,7 @@ function npcMutter(e, lines) {
     const pose = {
       x: this.x, y: this.y - (P & NPC_P.sit ? 0.45 : 0), z: this.z, yaw: this.yaw, headPitch, headYaw: this.hy,
       walk: this.walk * 1.4, walkAmt: Math.min(1, this.walkAmt || 0), swing: this.swingT > 0 ? 1 - this.swingT / 0.3 : 0,
-      held: sleep || (P & NPC_P.read && N.j !== 'librarian') ? null : this.heldItem, sit: !!(P & NPC_P.sit), sleep, time: this.game.time + (N.s % 50),
+      held: sleep || (P & NPC_P.read && N.j !== 'librarian') ? null : (P & NPC_P.sit) && this.sitHeld ? this.sitHeld : this.heldItem, sit: !!(P & NPC_P.sit), sleep, time: this.game.time + (N.s % 50),
       light: [l >> 4, l & 15], deathT: this.deathTime > 0 ? Math.min(1, this.deathTime * 2) : 0, tint: this.hurtTime > 0 ? [1, 0.15, 0.1, 0.4] : null,
       armor: this.npcArmor || null, wave: P & NPC_P.wave ? 1 : 0, talk: !!(P & NPC_P.talk), fold: !!(P & NPC_P.fold), read: !!(P & NPC_P.read),
     };
@@ -1079,7 +1086,7 @@ class NpcShop {
     return list.filter(l => ITEMS[l[0]]).map((l, i) => ({ i, id: l[0], n: l[1], price: Math.max(1, Math.round(l[2] * (COIN() === 'gold_coin' ? 4 : 1) * (t.tab === 'buy' ? disc : 1))), tier: l[3], locked: l[3] > st.tier, key: t.tab + i }));
   }
   stockOf(line) {
-    const t = this.t, S = npcStats(t.lp.player), k = t.v.id + ':' + t.e.npc.i, day = npcDay(t.g);
+    const t = this.t, S = npcStats(t.lp.player), k = (t.v ? t.v.id : 'camp:' + (t.e.npc.cid || '')) + ':' + t.e.npc.i, day = npcDay(t.g);   // (Shadowbloom) a merchant on the road has no village
     const rec = S.vstock[k] && S.vstock[k].d === day ? S.vstock[k] : (S.vstock[k] = { d: day, u: {} });
     return { left: 12 - (rec.u[line.key] || 0), rec };
   }

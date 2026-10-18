@@ -740,8 +740,10 @@ MONSTER_AI.warlock = function (dt, p, dist, dyp, toPlayer) {
     const frac = this.health / this.maxHealth; this.calls = this.calls || 0;
     if ((frac < 0.66 && this.calls < 1) || (frac < 0.33 && this.calls < 2)) {
       this.calls++;
-      for (let i = 0; i < 2; i++) { const a = Math.random() * TAU, m = g.addEntity(new Mob(g, 'warlock', this.x + Math.cos(a) * 2, this.y + 0.2, this.z + Math.sin(a) * 2)); m.huntT = 30; spellFx(g, m.x, m.y + 1, m.z, 'mana_arcane', 30, 1.5); }
-      for (const l of g.locals) if (Math.hypot(l.player.x - this.x, l.player.z - this.z) < 30) l.toast('The Hollow Archmage calls his apprentices!', 'warn');
+      const kind = T.minion && MOB_TYPES[T.minion] ? T.minion : 'warlock';   // (Shadowbloom) a campaign caster calls its own
+      for (let i = 0; i < 2; i++) { const a = Math.random() * TAU, m = g.addEntity(new Mob(g, kind, this.x + Math.cos(a) * 2, this.y + 0.2, this.z + Math.sin(a) * 2)); m.huntT = 30; m.persistent = !!T.campaign; spellFx(g, m.x, m.y + 1, m.z, 'mana_arcane', 30, 1.5); }
+      const who = String(T.label || 'The Hollow Archmage').replace(/^the /, 'The ');
+      for (const l of g.locals) if (Math.hypot(l.player.x - this.x, l.player.z - this.z) < 30) l.toast(T.campaign ? `${who} calls for aid!` : 'The Hollow Archmage calls his apprentices!', 'warn');
     }
   }
   if (this.castT <= 0 && s.sees && dist < 24) {

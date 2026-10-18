@@ -1,14 +1,14 @@
 // ---------------------------------------------------------------------------
 // dnd/rules.js — the tabletop rules, wired into the game.
 //
-// With a character made (player.stats.dnd), a player plays by the d20:
+// With a character made (player.stats.dnd), a player plays an action RPG built on the tabletop's classes:
 //   • hit points are the character's (1 HP = half a heart: the hearts row becomes an HP bar)
-//   • every swing and every arrow is an attack roll against the creature's armour class;
-//     a natural 20 is a critical hit (the dice twice), a 1 always misses
-//   • every creature's blow is its attack roll against your armour class
+//   • (alpha 2) combat is live: every swing, arrow and spell that connects lands. Your attack bonus against a
+//     creature's armour makes the blow a little harder or softer, and criticals are a chance (keener for some)
+//   • a creature's blow lands when it reaches you; your armour class turns into how much of it you shrug off
 //   • weapons deal their dice plus your Strength (or Dexterity, for finesse and ranged)
 //   • rogues sneak-attack, barbarians rage, paladins smite... (dnd/abilities.js), casters cast (dnd/spells.js)
-//   • at 0 hit points you fall and make death saving throws; a friend (or a healing spell) brings you back
+//   • at 0 hit points you fall; a friend (or a healing spell) brings you back before you bleed out
 //   • experience from creatures and quests raises your level (to 20), with more hit points and features
 //   • short rests (P: your sheet) spend hit dice; a night in a bed is a long rest
 // The game's own crafting skills (mining, smithing, cooking...) stay as they are.
@@ -117,21 +117,19 @@ function dndMobTakes(e, type) {
   return 1;
 }
 // make the attack; returns { hit, crit, total, roll, dmg, text }
+// (alpha 2: live action) a blow that connects always lands. Skill shows in how hard it lands: your attack bonus against
+// the creature's armour scales the damage up or down a little, and a critical is a chance (better with a keener eye),
+// not a roll you watch. Advantage (hidden, reckless, the foe held fast) makes a critical likelier.
+function dndCritChance(c, adv, dis) { const range = 21 - (c.d.crit || 20); let ch = 0.05 * range + (DND_SPECIES[c.species] && DND_SPECIES[c.species].lucky ? 0.03 : 0) + (c.inspiration ? 0.05 : 0); if (adv) ch += 0.08; if (dis) ch *= 0.5; return Math.min(0.4, ch); }
+function dndArmourScale(toHit, ac) { return Math.max(0.6, Math.min(1.2, 1 - (ac - 10 - toHit * 0.5) * 0.03)); }
 function dndAttack(lp, e, W, o = {}) {
   const c = dndLive(lp); if (!c) return null;
   dndDerive(c, lp.player.inv);
   const A = dndWeaponAttack(c, W);
   const ac = dndMobAC(e) + (e.dndAcBonus || 0);
   const { adv, dis } = dndAdvAgainst(lp, e, c);
-  const R = dndD20({ mod: A.toHit + (o.toHit || 0), adv: adv || o.adv, dis: dis || o.dis, lucky: DND_SPECIES[c.species].lucky, bonus: dndCheckBonus(lp, false) + (c.conds.bless ? 0 : 0) });
-  let crit = R.roll >= c.d.crit || (e.dndHeld > 0 && Math.hypot(lp.player.x - e.x, lp.player.z - e.z) < 2.5);
-  const hit = !R.nat1 && (crit || R.total >= ac);
-  if (!hit) {
-    // Heroic Inspiration or Luck: a reroll on a miss
-    if (c.inspiration && !o.noReroll) { c.inspiration = false; lp.toast('Heroic Inspiration: you reroll!', 'good'); return dndAttack(lp, e, W, Object.assign({}, o, { noReroll: true })); }
-    if (c.luck > 0 && !o.noReroll && R.total + 5 >= ac) { c.luck--; lp.toast(`Lucky! You reroll (${c.luck} left)`, 'good'); return dndAttack(lp, e, W, Object.assign({}, o, { noReroll: true })); }
-    return { hit: false, crit: false, roll: R.roll, total: R.total, ac, dmg: 0 };
-  }
+  const crit = Math.random() < dndCritChance(c, adv || o.adv, dis || o.dis) || (e.dndHeld > 0 && Math.hypot(lp.player.x - e.x, lp.player.z - e.z) < 2.5);
+  const R = { roll: 0, total: A.toHit + (o.toHit || 0) };
   // the damage: the weapon's dice, your modifier, and everything that rides on the blow
   const versatile = W.ver && !lp.player.inv.offhand ? W.ver : null;
   const dice = versatile && !W.unarmed ? versatile : A.dice;
@@ -140,6 +138,7 @@ function dndAttack(lp, e, W, o = {}) {
   const parts = [], d = c.d;
   // the class's extras
   if (c.conds.rage > 0 && !W.ranged) dmg += d.rageDmg;
+  if (c.conds.bless) dmg += dndRoll(1, 4).total;
   if (c.cls === 'rogue' && (W.props.includes('finesse') || W.ranged) && (adv || c.conds.hidden > 0 || dndAllyNear(lp, e)) && !lp._sneakUsed) { const s = dndRoll(d.sneak * (crit ? 2 : 1), 6).total; dmg += s; parts.push('sneak'); lp._sneakUsed = 0.9; delete c.conds.hidden; }
   if (e.dndMark && e.dndMark.hunted > 0 && e.dndMark.hunter === lp) dmg += dndRoll(crit ? 2 : 1, 6).total;
   if (e.dndMark && e.dndMark.hexed > 0 && e.dndMark.hexer === lp) dmg += dndRoll(crit ? 2 : 1, 6).total;
@@ -147,9 +146,9 @@ function dndAttack(lp, e, W, o = {}) {
   if (c.conds.mantle > 0) dmg += dndRoll(1, 4).total;
   const held = lp.player.inv.held, hd = held && itemDef(held.id);
   if (hd && hd.dndExtra) dmg += dndRoll(hd.dndExtra[0] * (crit ? 2 : 1), hd.dndExtra[1]).total;
-  // the creature's resistances
+  // the creature's resistances, and its armour against your skill
   const k = dndMobTakes(e, W.element === 'fire' ? 'fire' : W.element === 'frost' ? 'cold' : W.dmg);
-  dmg = Math.max(k === 0 ? 0 : 1, Math.round(dmg * k));
+  dmg = Math.max(k === 0 ? 0 : 1, Math.round(dmg * k * dndArmourScale(R.total, ac)));
   if (e.dndMark && e.dndMark.guided > 0) e.dndMark.guided = 0;   // Guiding Bolt's light is spent on the first hit
   return { hit: true, crit, roll: R.roll, total: R.total, ac, dmg, parts };
 }
@@ -217,21 +216,19 @@ function dndAllyNear(lp, e) { return lp.g.pawns().some(p => p !== lp && p.player
     let dmg = amount;
     const fromMob = a && (a instanceof Mob || (src.at && MOB_TYPES[src.at])) && !src.bypass && src.type !== 'magic' && src.type !== 'explosion';
     if (fromMob && !(p.invuln > 0)) {
+      // (alpha 2: live action) the blow lands when it reaches you; your armour takes the edge off it, a nimble or hidden
+      // target now and then turns it aside, and a heavy hitter's skill pushes back against your armour
       const m = a instanceof Mob ? a : { T: MOB_TYPES[src.at], type: src.at, maxHealth: MOB_TYPES[src.at].hp };
-      let adv = false, dis = (m.dndWeak > 0) || (c.conds.dodge > 0) || c.conds.invisible > 0;
-      if (c.conds.reckless) adv = true;
-      if (p.downed > 0) adv = true;
-      const R = dndD20({ mod: dndMobAttack(m), adv, dis });
-      const ac = c.d.ac;
-      if (R.nat1 || (!R.nat20 && R.total < ac)) {
-        this.floatText(p.x, p.y + 2, p.z, `Miss! (${R.total} vs AC ${ac})`, '#8fe3ff');
+      const dodge = (m.dndWeak > 0) || (c.conds.dodge > 0) || c.conds.invisible > 0;
+      if (dodge && Math.random() < 0.4) {
+        this.floatText(p.x, p.y + 2, p.z, 'Dodged!', '#8fe3ff');
         p.invuln = Math.max(p.invuln || 0, 0.35);
-        if (c.cls === 'monk' && c.level >= 3 && c.res.focus > 0 && Math.random() < 0.15) { /* Deflect Attacks: flourish only */ }
         return;
       }
-      // a hit: the blow varies like a die would, and a critical hits twice as hard
-      dmg = Math.max(1, Math.round(amount * (0.65 + Math.random() * 0.7)));
-      if (R.nat20) { dmg *= 2; this.floatText(p.x, p.y + 2.2, p.z, 'Critical hit!', '#ff6050'); }
+      const ac = c.d.ac, toHit = dndMobAttack(m);
+      const scale = Math.max(0.42, Math.min(1.15, 1 - (ac - 10) * 0.045 + (toHit - 4) * 0.025 + (c.conds.reckless ? 0.15 : 0) + (p.downed > 0 ? 0.2 : 0)));
+      dmg = Math.max(1, Math.round(amount * scale * (0.75 + Math.random() * 0.5)));
+      if (Math.random() < 0.05) { dmg = Math.round(dmg * 1.75); this.floatText(p.x, p.y + 2.2, p.z, 'Critical hit!', '#ff6050'); }
     }
     // resistance by kind
     const kind = src.element === 'fire' || src.type === 'lava' || src.type === 'burn' ? 'fire' : src.element === 'frost' ? 'cold' : src.element === 'poison' || src.type === 'poison' ? 'poison' : src.element || (fromMob ? 'slashing' : null);
@@ -241,8 +238,8 @@ function dndAllyNear(lp, e) { return lp.g.pawns().some(p => p !== lp && p.player
     if (c.tempHp > 0) { const t = Math.min(c.tempHp, dmg); c.tempHp -= t; dmg -= t; if (!dmg) { this.floatText(p.x, p.y + 2, p.z, 'Absorbed', '#c8e8ff'); dndHudDirty(this); return; } }
     // concentration: a hit makes you hold on (Constitution save, DC 10 or half the damage)
     if (c.conc && dmg > 0) {
-      const dc = Math.max(10, Math.floor(dmg / 2)), R = dndD20({ mod: c.d.saves.con });
-      if (R.total < dc && !R.nat20) { this.toast(`You lose your concentration on ${DND_SPELLS[c.conc.k] ? DND_SPELLS[c.conds.concName || c.conc.k].name : 'your spell'}`, 'warn'); dndEndConc(this); }
+      // (alpha 2) a hard enough blow breaks your hold on a spell: harder the tougher you are
+      if (dmg >= 8 + Math.max(0, c.d.saves.con) * 2) { this.toast(`You lose your concentration on ${DND_SPELLS[c.conc.k] ? DND_SPELLS[c.conds.concName || c.conc.k].name : 'your spell'}`, 'warn'); dndEndConc(this); }
     }
     // the armour already did its work in the roll: don't let the game take its share again
     const s2 = Object.assign({}, src, { bypassArmor: true, dnd: true });
@@ -260,7 +257,7 @@ function dndAllyNear(lp, e) { return lp.g.pawns().some(p => p !== lp && p.player
   };
 }
 
-// ---- falling: death saving throws ----------------------------------------------------------------------------------------
+// ---- falling: down, not dead (alpha 2: a friend picks you up; no dice) ----------------------------------------------------------------------------------------
 {
   const baseDie = LocalPlayer.prototype.die;
   LocalPlayer.prototype.die = function (src = {}) {
@@ -268,44 +265,17 @@ function dndAllyNear(lp, e) { return lp.g.pawns().some(p => p !== lp && p.player
     if (c && !p.downed && !g.creative && src.type !== 'void' && !src.finish && g.state === 'playing') {
       // the orc's Relentless Endurance: 1 HP instead, once a day
       if (c.res.relentless > 0) { c.res.relentless = 0; p.health = 1; p.dead = false; this.toast('Relentless Endurance! You refuse to fall.', 'epic'); this.floatText(p.x, p.y + 2, p.z, 'Relentless!', '#ffb050'); return; }
-      p.downed = 999; p.downSrc = { type: src.type, attacker: src.attacker }; p.health = 1; p.dead = false;
+      p.downed = (typeof PARTY !== 'undefined' ? PARTY.downFor : 30); p.downSrc = { type: src.type, attacker: src.attacker }; p.health = 1; p.dead = false;
       p.vx = p.vz = 0; p.crawling = true; this.mining = null; this._giveUp = 0; c.deathS = 0; c.deathF = 0; this._dsT = 2.5;
       if (this.mode === 'inv') this.closeInventory();
       g.sfx.play('hurt');
-      this.toast('You fall! Death saving throws: three successes and you rise. A friend or a healing spell brings you back sooner.', 'warn');
+      this.toast('You fall! A friend can help you up (or heal you) before you bleed out.', 'warn');
       if (typeof partyOthers === 'function') for (const o of partyOthers(g, this)) if (o.local) o.who.toast(`${c.name} is down! Hold Use on them, or heal them`, 'warn');
       if (g.net) { if (g.isGuest) g.net.send({ t: 'adv', k: 'downsay', li: this.index || 0, n: c.name }); else g.net.all({ t: 'toast', m: `${c.name} is down! Hold Use on them, or heal them`, k: 'warn' }); }
       dndHudDirty(this);
       return;
     }
     return baseDie.call(this, src);
-  };
-  const baseUpd = LocalPlayer.prototype.update;
-  LocalPlayer.prototype.update = function (dt, inp) {
-    const c = dndLive(this), p = this.player;
-    if (c && p.downed > 0 && !p.dead) {
-      p.downed = 999;   // the clock is the dice now
-      p.health = Math.min(p.health, 1);
-      if ((this._dsT = (this._dsT ?? 3) - dt) <= 0) {
-        this._dsT = 3.2;
-        dndRollShow(this.el, { label: 'Death saving throw', mod: 0, dc: 10, hold: 900 }).then((R) => {
-          if (!(p.downed > 0) || p.dead) return;
-          if (R.nat20) { p.downed = 0; p.health = 1; p.crawling = false; c.deathS = c.deathF = 0; this.toast('A natural 20! You rise with 1 hit point.', 'epic'); if (typeof downedHud === 'function') downedHud(this); dndHudDirty(this); return; }
-          if (R.ok) c.deathS = (c.deathS || 0) + 1; else c.deathF = (c.deathF || 0) + (R.nat1 ? 2 : 1);
-          if (c.deathS >= 3) { p.downed = 0; p.health = 1; p.crawling = false; c.deathS = c.deathF = 0; this.toast('Stable. You stagger up with 1 hit point.', 'good'); if (typeof downedHud === 'function') downedHud(this); }
-          else if (c.deathF >= 3) { c.deathS = c.deathF = 0; p.downed = 0; const s = Object.assign({}, p.downSrc || {}, { finish: true }); p.health = 0; this.die(s); }
-          dndHudDirty(this); if (typeof downedHud === 'function') downedHud(this);
-        });
-      }
-    }
-    return baseUpd.call(this, dt, inp);
-  };
-  // a blow while you're down: a failed save
-  const baseHurt = LocalPlayer.prototype.hurt;
-  LocalPlayer.prototype.hurt = function (amount, src = {}) {
-    const c = dndLive(this), p = this.player;
-    if (c && p.downed > 0 && amount > 0 && !(p.invuln > 0)) { c.deathF = (c.deathF || 0) + 1; p.invuln = 1; p.hurtFlash = 1; this.toast(`Struck while down: a failed death save (${c.deathF}/3)`, 'warn'); if (c.deathF >= 3) { c.deathS = c.deathF = 0; p.downed = 0; p.health = 0; this.die(Object.assign({}, src, { finish: true })); } dndHudDirty(this); return 0; }
-    return baseHurt.call(this, amount, src);
   };
 }
 
@@ -373,14 +343,14 @@ function dndHudDirty(lp) { if (lp && lp.hud) lp.hud._dndSig = null; }
     }
     dndDerive(c, p.inv);
     const conc = c.conc ? (DND_SPELLS[c.conc.k] || {}).name : '';
-    const sig = [Math.ceil(p.health), p.maxHealth, c.tempHp, c.d.ac, c.level, c.xp, c.slots.join(','), c.res.sig, c.res.racial, c.res.focus, c.res.pool, c.deathS, c.deathF, p.downed > 0, conc, c.inspiration, c.luck, Object.keys(c.conds).join(','), lp._dndSpell].join('|');
+    const sig = [Math.ceil(p.health), p.maxHealth, c.tempHp, c.d.ac, c.level, c.xp, c.slots.join(','), c.res.sig, c.res.racial, c.res.focus, c.res.pool, Math.ceil(p.downed || 0), conc, c.inspiration, c.luck, Object.keys(c.conds).join(','), lp._dndSpell].join('|');
     if (sig !== this._dndSig) {
       this._dndSig = sig;
       const hp = Math.max(0, Math.ceil(p.health)), mx = p.maxHealth;
       el.querySelector('.dh-ac b').textContent = c.d.ac;
       el.querySelector('.dh-fill').style.width = Math.min(100, hp / mx * 100) + '%';
       el.querySelector('.dh-temp').style.width = Math.min(100, (c.tempHp || 0) / mx * 100) + '%';
-      el.querySelector('.dh-hpt').textContent = p.downed > 0 ? `Dying · saves ${'●'.repeat(c.deathS || 0)}${'○'.repeat(3 - (c.deathS || 0))} fails ${'✖'.repeat(c.deathF || 0)}${'·'.repeat(3 - Math.min(3, c.deathF || 0))}` : `${hp} / ${mx} HP${c.tempHp ? ' (+' + c.tempHp + ')' : ''}`;
+      el.querySelector('.dh-hpt').textContent = p.downed > 0 ? `Down · ${Math.ceil(p.downed)} s to help` : `${hp} / ${mx} HP${c.tempHp ? ' (+' + c.tempHp + ')' : ''}`;
       el.querySelector('.dh-hp').classList.toggle('low', hp <= mx / 4);
       el.querySelector('.dh-hp').classList.toggle('dying', p.downed > 0);
       const next = c.level < DND_MAX_LEVEL ? DND_XP[c.level + 1] : null, prev = DND_XP[c.level];

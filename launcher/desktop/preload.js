@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('emberLauncher', {
   quit: () => ipcRenderer.send('ember:quit'),
   gameVersion: () => ipcRenderer.invoke('ember:version'),
   installUpdate: () => ipcRenderer.invoke('ember:update'),
+  // (alpha 2) the GeruDoku resource pack, fetched by the app from its official GitHub release
+  fetchPack: (url) => ipcRenderer.invoke('ember:fetchPack', url),
   news: () => ipcRenderer.invoke('ember:news'),
   // 0.9.0.40: updates from GitHub Releases
   updates: {
