@@ -5,6 +5,8 @@
 //   dist/desktop/        – the desktop app's files (tools/package.sh turns them into an AppImage / .exe)
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
+// DQ_OUT=<dir>: write only the game file there (for parallel test builds that mustn't touch dist/)
+const OUT = process.env.DQ_OUT || null;
 const src = (p) => fs.readFileSync(path.join(root, 'src', p), 'utf8');
 const ORDER = [
   'core/util.js', 'core/blocks.js', 'core/items.js', 'render/doku.js', 'render/doku2.js', 'render/doku3.js', 'render/doku4.js', 'render/gerudoku.js', 'render/mobtex.js', 'render/textures.js', 'render/packs.js',
@@ -15,15 +17,18 @@ const ORDER = [
   'game/player.js', 'game/entities.js', 'game/fauna.js', 'game/portals.js', 'game/haunt.js', 'game/mobai.js', 'game/dismember.js',
   'ui/hud.js', 'ui/invui.js', 'ui/title.js', 'ui/ui.js', 'input/padsetup.js', 'game/local.js', 'game/game.js', 'input/controls.js',
   'game/build.js', 'game/blockfx.js', 'game/mech.js', 'game/vehicles.js', 'game/blocks2.js',
-  'game/redstone.js', 'game/minecart.js', 'game/rsplace.js', 'game/rules.js', 'game/ambientfx.js', 'game/commands.js', 'game/nightmobs.js', 'game/bestiary.js', 'game/crowd.js', 'game/sounds2.js', 'game/sfxlib.js', 'game/voices3.js', 'game/monsters.js', 'game/quarrels.js', 'game/furniture.js', 'game/pets.js', 'game/trains.js', 'game/bows.js', 'game/ships.js', 'game/boats2.js', 'game/fishing.js', 'game/portallinks.js', 'game/aquatic.js', 'game/blocksounds.js', 'game/obtain.js', 'game/weather.js', 'game/instruments.js', 'game/capes.js', 'game/particles2.js', 'game/sound3.js', 'game/husbandry.js', 'game/skymobs.js', 'game/dyeing.js', 'game/metals.js', 'game/skills.js', 'net/net.js', 'net/netsync.js', 'net/netui.js', 'game/maps.js', 'game/villages.js', 'game/towns.js', 'game/villagers.js', 'game/magic.js', 'game/dungeons.js', 'game/riftarc.js', 'game/worldupdate.js', 'game/dragons.js', 'game/seamless.js', 'game/stable.js', 'game/structures.js', 'game/villageflat.js', 'game/enchanting.js', 'game/brewing.js', 'game/aether.js', 'game/music2.js', 'game/riftlore.js', 'game/camping.js', 'game/carried.js', 'render/clouds.js', 'game/portalview.js', 'ui/sheet.js', 'game/worlds.js', 'game/theend.js', 'game/stronghold.js', 'game/endmobs.js', 'game/elytra.js', 'game/deepdark.js', 'game/movement.js', 'game/perf.js', 'game/anim.js', 'game/fairplay.js', 'game/rpg.js', 'game/arcana.js', 'game/farming.js', 'game/places.js', 'game/server.js', 'game/mods.js', 'game/livingworld.js', 'game/hearth.js', 'game/together.js', 'game/machines.js', 'game/travel.js', 'game/paths.js', 'game/deephalls.js', 'game/seas.js',
+  'game/redstone.js', 'game/minecart.js', 'game/rsplace.js', 'game/rules.js', 'game/ambientfx.js', 'game/commands.js', 'game/nightmobs.js', 'game/bestiary.js', 'game/crowd.js', 'game/sounds2.js', 'game/sfxlib.js', 'game/voices3.js', 'game/monsters.js', 'game/quarrels.js', 'game/furniture.js', 'game/pets.js', 'game/trains.js', 'game/bows.js', 'game/ships.js', 'game/boats2.js', 'game/fishing.js', 'game/portallinks.js', 'game/aquatic.js', 'game/blocksounds.js', 'game/obtain.js', 'game/weather.js', 'game/instruments.js', 'game/capes.js', 'game/particles2.js', 'game/sound3.js', 'game/husbandry.js', 'game/skymobs.js', 'game/dyeing.js', 'game/metals.js', 'game/skills.js', 'net/net.js', 'net/netsync.js', 'net/netui.js', 'game/maps.js', 'game/villages.js', 'game/towns.js', 'game/villagers.js', 'game/towns3.js', 'game/townlife.js', 'game/magic.js', 'game/dungeons.js', 'game/riftarc.js', 'game/worldupdate.js', 'game/dragons.js', 'game/seamless.js', 'game/stable.js', 'game/structures.js', 'game/villageflat.js', 'game/enchanting.js', 'game/brewing.js', 'game/aether.js', 'game/music2.js', 'game/riftlore.js', 'game/camping.js', 'game/carried.js', 'render/clouds.js', 'game/portalview.js', 'ui/sheet.js', 'game/worlds.js', 'game/theend.js', 'game/stronghold.js', 'game/endmobs.js', 'game/elytra.js', 'game/deepdark.js', 'game/movement.js', 'game/perf.js', 'game/anim.js', 'game/fairplay.js', 'game/rpg.js', 'game/arcana.js', 'game/farming.js', 'game/places.js', 'game/server.js', 'game/mods.js', 'game/livingworld.js', 'game/hearth.js', 'game/together.js', 'game/machines.js', 'game/travel.js', 'game/paths.js', 'game/deephalls.js', 'game/seas.js',
   'game/skies.js', 'game/distant.js',
-  'dnd/srd.js', 'dnd/spelldata.js', 'dnd/items.js', 'dnd/dice.js', 'dnd/character.js', 'dnd/look.js', 'dnd/rules.js', 'dnd/spells.js', 'dnd/abilities.js', 'dnd/creator.js',
-  'campaign/engine.js', 'campaign/extras.js',
-  'campaign/sb_world.js', 'campaign/sb_act1.js', 'campaign/sb_act2.js', 'campaign/sb_act3.js', 'campaign/shadowbloom.js',
-  'render/gear3d.js', 'ui/hymenu.js',
+  'dnd/srd.js', 'dnd/spelldata.js', 'dnd/spells_more1.js', 'dnd/spells_more2.js', 'dnd/spells_more3.js', 'dnd/items.js', 'dnd/equipment.js', 'dnd/magicitems.js', 'dnd/dice.js', 'dnd/character.js', 'dnd/look.js', 'dnd/rules.js', 'dnd/spells.js', 'dnd/spells2.js', 'dnd/abilities.js', 'dnd/ranged.js', 'dnd/magic.js', 'dnd/progression.js', 'dnd/origins.js', 'dnd/creator.js',
+  'game/dnd_monsters1.js', 'game/dnd_monsters2.js', 'game/dnd_monsters3.js',
+  'campaign/engine.js', 'campaign/extras.js', 'campaign/restday.js', 'campaign/roads.js', 'campaign/encounters.js', 'campaign/companions.js', 'campaign/regionspawn.js',
+  'campaign/sb_world.js', 'campaign/sb_act1.js', 'campaign/sb_act2.js', 'campaign/sb_act3.js', 'campaign/sb_regions.js', 'campaign/watcher.js', 'campaign/shadowbloom.js',
+  'render/gear3d.js', 'render/itemmodels.js', 'game/shields.js', 'game/traps.js', 'render/icons3d.js', 'ui/hymenu.js',
   'boot/main.js',
 ];
-const js = ORDER.map(f => `// ==== ${f} ====\n` + src('js/' + f)).join('\n');
+// DQ_SKIP=a.js,b.js leaves modules out of a test build (a module another hand is still writing)
+const SKIP = (process.env.DQ_SKIP || '').split(',').filter(Boolean);
+const js = ORDER.filter(f => !SKIP.includes(f)).map(f => `// ==== ${f} ====\n` + src('js/' + f)).join('\n');
 if (/<\/script/i.test(js)) throw new Error('JS contains a closing script tag');
 const bundle = `(function () {\n'use strict';\n${js}\n})();`;
 // (0.9.0.55) a syntax error anywhere leaves the game unable to start at all: caught here, naming the module it's in
@@ -37,8 +42,7 @@ const css = src('styles.css') + '\n' + (fs.existsSync(path.join(root, 'src/dnd.c
 const news = fs.readFileSync(path.join(root, 'launcher/news.html'), 'utf8').trim();
 if (/<\/template|\/\*SCRIPT\*\//i.test(news)) throw new Error('news.html must not contain </template> or the script marker');
 const body = src('index.html').replace('/*STYLES*/', () => css).replace('/*NEWS*/', () => news).replace('/*SCRIPT*/', () => bundle);
-fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
-fs.writeFileSync(path.join(root, 'dist/artifact.html'), body);
+if (!OUT) { fs.mkdirSync(path.join(root, 'dist'), { recursive: true }); fs.writeFileSync(path.join(root, 'dist/artifact.html'), body); }
 const page = (extraHead) => `<!doctype html>
 <html lang="en">
 <head>
@@ -65,6 +69,7 @@ for (const d of ['launcher', 'tools', 'notes']) if (fs.existsSync(path.join(root
 extra['README.md'] = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 const sourcesTag = `<script type="application/octet-stream" id="dq-sources" data-format="json+gzip+base64">${zlib.gzipSync(JSON.stringify(extra), { level: 9 }).toString('base64')}</script>\n`;
 const full = page('').replace('</body>', () => sourcesTag + '</body>');
+if (OUT) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'shadowbloom.html'), full); console.log('built', (full.length / 1024).toFixed(1), 'KB ->', OUT); process.exit(0); }
 fs.writeFileSync(path.join(root, 'dist/emberwild.html'), full);
 fs.writeFileSync(path.join(root, 'dist/shadowbloom.html'), full);   // the game file, the name releases carry
 

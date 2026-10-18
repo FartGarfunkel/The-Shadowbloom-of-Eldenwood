@@ -154,8 +154,9 @@ class Haunt {
   update(dt) {
     const g = this.g, p = g.player;
     if (!p || !hauntDimOk(g) || g.state !== 'playing') return;
-    if (typeof RIFT_OFF !== 'undefined' && RIFT_OFF) return;   // (Shadowbloom) no watcher in Eldenwood
-    if (!g.rules().haunting) return;
+    // (alpha 3) in the campaign he comes back: from the Mirrorroot on, until he falls
+    if (typeof RIFT_OFF !== 'undefined' && RIFT_OFF) { const S = g.meta.campaign && typeof campState === 'function' ? campState(g) : null; if (!S || S.flags.watcher_fallen || !((S.quests.q8 && S.quests.q8.done) || S.flags.watcher_awake)) return; }
+    if (!g.rules().haunting && !(g.meta.campaign && typeof campState === 'function' && campState(g).flags && ((campState(g).quests.q8 && campState(g).quests.q8.done) || campState(g).flags.watcher_awake) && g.rules().watcherOn !== false)) return;
     if ((g.meta.playTime || 0) < 120 && !this.force) return;
     // his traces, left where you aren't looking: only where the world is kept (the host), near anyone playing there
     if (!g.isGuest) {

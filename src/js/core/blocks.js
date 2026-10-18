@@ -629,6 +629,18 @@ addB({ key: 'brewing_stand', name: 'Brewing Stand', tex: 'brew_base', render: RE
 // (0.9.0.50) what lightning leaves of a tree it strikes
 addB({ key: 'charred_log', name: 'Charred Log', tex: { top: 'charred_log_top', bottom: 'charred_log_top', side: 'charred_log_side' }, hardness: 1.5, tool: TOOL.AXE, sound: 'wood', isLog: true, axisBlock: true, fuel: 2, drop: 'charcoal' });
 
+// (alpha 3) living towns (game/townlife.js): cloth that moves in the wind
+for (const [c, L] of COLORS) {
+  const wt = c === 'white' ? 'wool' : c + '_wool';
+  addB({ key: c + '_flag', name: L + ' Flag', tex: wt, render: RENDER.MODEL, shape: c + '_flag', facingModel: true, solid: false, opaque: false, hardness: 0.3, sound: 'wool', cloth: 'flag', clothTex: wt, color: c, fuel: 0.5 });
+  addB({ key: c + '_banner', name: L + ' Banner', tex: wt, render: RENDER.MODEL, shape: c + '_banner', facingModel: true, solid: false, opaque: false, hardness: 0.3, sound: 'wool', cloth: 'banner', clothTex: wt, color: c, fuel: 0.5 });
+}
+addB({ key: 'bunting', name: 'Bunting', tex: 'red_wool', render: RENDER.MODEL, shape: 'bunting', facingModel: true, solid: false, opaque: false, hardness: 0.1, sound: 'wool', cloth: 'bunting', fuel: 0.3 });
+addB({ key: 'washing_line', name: 'Washing Line', tex: 'wool', render: RENDER.MODEL, shape: 'washing_line', facingModel: true, solid: false, opaque: false, hardness: 0.1, sound: 'wool', cloth: 'line', fuel: 0.3 });
+addB({ key: 'hanging_shop_sign', name: 'Hanging Shop Sign', tex: 'spruce_planks', render: RENDER.MODEL, shape: 'hanging_shop_sign', facingModel: true, solid: false, opaque: false, hardness: 0.6, tool: TOOL.AXE, sound: 'wood', cloth: 'shopsign', fuel: 0.5 });
+
+// (alpha 3) a town's great gate, shut: what you bump into (the gate itself is drawn moving: game/towns3.js)
+addB({ key: 'gate_barrier', name: 'Town Gate', tex: 'spruce_planks', render: RENDER.NONE, solid: true, opaque: false, hardness: -1, drop: null, sound: 'wood', townGate: true });
 BLOCK_DEFS.push(...BLOCK_EXTRA);
 
 // Old key -> new key, applied when loading saves. Add entries when renaming.

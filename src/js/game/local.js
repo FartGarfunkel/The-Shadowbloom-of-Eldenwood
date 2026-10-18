@@ -995,6 +995,12 @@ class LocalPlayer {
         Mat4.translate(m, -side * 0.02, 0.05, -0.05);
         Mat4.rotateX(m, -0.3 - sw * 0.7); Mat4.rotateZ(m, side * 0.2); Mat4.rotateY(m, side * 0.6);
         Mat4.scale(m, 0.46, 0.46, 0.46); Mat4.translate(m, 0, 0.6, 0);
+      } else if (typeof isShieldId === 'function' && isShieldId(id)) {
+        // (alpha 3) a shield, held like one: upright, its face to the front; raised and brought across when you block
+        const b = this._blockE || 0;
+        Mat4.translate(m, side * (0.06 - 0.26 * b), 0.02 + 0.12 * b, -0.2 - 0.1 * b);
+        Mat4.rotateY(m, side * (-0.35 + 0.3 * b)); Mat4.rotateX(m, 0.05 - 0.08 * b);
+        Mat4.scale(m, 0.52 + 0.06 * b, 0.52 + 0.06 * b, 0.52 + 0.06 * b);
       } else if (im.kind === 'block') {
         Mat4.translate(m, -side * 0.03, 0.1, -0.06);
         Mat4.rotateX(m, -sw * 0.4); Mat4.rotateY(m, side * 0.78 - sw * 0.3); Mat4.scale(m, 0.4, 0.4, 0.4);

@@ -590,7 +590,9 @@ Object.assign(VTEMPLATES, {
       S.set(5, 11, 4, 'barrel'); S.set(5, 11, 5, 'barrel'); S.torch(5, 13, 3, 1);
       // the lookout: lanterns and the town's banner
       S.set(1, 16, 1, 'lantern'); S.set(5, 16, 5, 'lantern');
-      S.set(5, 16, 1, st.fence); S.set(5, 17, 1, st.fence); S.set(5, 18, 1, st.fence); S.set(6, 18, 1, st.banner[0]); S.set(6, 17, 1, st.banner[0]);
+      S.set(5, 16, 1, st.fence); S.set(5, 17, 1, st.fence); S.set(5, 18, 1, st.fence);
+      if (typeof VGATE_CH !== 'undefined' && VGATE_CH.gv >= 6) { const wd = VGATE_CH.wind, ld = (wd - S.r + 4) & 3; S.set(5, 19, 1, st.fence); S.set(5 + DXL[ld], 19, 1 + DZL[ld], clothKey(st.banner[0], 'flag'), wd); }   // (alpha 3) a flag in the wind
+      else { S.set(6, 18, 1, st.banner[0]); S.set(6, 17, 1, st.banner[0]); }
       vFrontPath(S, 3);
     },
   },

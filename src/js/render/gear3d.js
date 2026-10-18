@@ -15,7 +15,7 @@
 // (GeruDoku) those are the pack's pictures, so the 3D gear wears the pack's art.
 // ---------------------------------------------------------------------------
 
-const GEAR_SPECIES = ['human', 'elf', 'dwarf', 'halfling', 'gnome', 'dragonborn', 'orc', 'tiefling', 'goliath'];
+const GEAR_SPECIES = ['human', 'elf', 'dwarf', 'halfling', 'gnome', 'dragonborn', 'orc', 'tiefling', 'goliath', 'sunmane', 'kestrin', 'mossborn', 'lumini', 'tidecursed', 'veilborn'];
 const GEAR_HAIRS = ['bald', 'short', 'crop', 'long', 'tail', 'braids', 'mohawk', 'bun', 'curly', 'sides', 'wild'];
 const GEAR_BEARDS = ['none', 'stubble', 'short', 'long', 'braided', 'moustache', 'wizard', 'forked'];
 const GEAR_HORNS = ['none', 'curled', 'ram', 'straight', 'small'];
@@ -286,6 +286,31 @@ function gearShapes(L, aw, helm, chest) {
       seg('tail', 'skin', [0, 12.2, 2.0], [0, 7.2, 5.6], 1.1, 0.95); seg('tail', 'skin', [0, 7.2, 5.6], [0, 4.2, 9.6], 0.95, 0.8); seg('tail', 'skin', [0, 4.2, 9.6], [0, 4.8, 12.8], 0.8, 0.7);
       box('tail', 'skin', [-1.3, 3.6, 12.4], [1.3, 6.2, 14.2], { t1: [0.2, 0.5] });
     }
+  }
+  // (alpha 3) Eldenwood's own folk
+  const SP = L.species;
+  if (SP === 'sunmane') {
+    seg('head', 'skin', [-2.8, 31.2, 0.2], [-3.6, 34.6, 0.6], [1.9, 1.0], [0.35, 0.3], { mirror: true });            // a cat's ears
+    seg('head', 'hair', [0, 30.0, 4.6], [0, 22.4, 5.4], [8.6, 2.6], [7.0, 1.6]);                                     // the mane, down the back of the neck
+    seg('head', 'hair', [-4.3, 29.6, 1.6], [-4.9, 24.6, 2.6], [1.6, 3.6], [1.0, 2.0], { mirror: true });
+    box('head', 'skin', [-1.6, 25.3, -5.1], [1.6, 27.4, -3.9], { t1: [0.92, 1] });                                   // a broad nose and muzzle
+  } else if (SP === 'kestrin') {
+    seg('head', 'horn', [0, 27.0, -4.0], [0, 25.4, -7.4], [2.2, 1.6], [0.3, 0.3]);                                    // the beak
+    for (const [a, b, c] of [[0, 32.0, 0.5], [0, 31.4, 3.0], [0, 30.0, 4.6]]) seg('head', 'feather', [a, b, c], [a, b + 2.6, c + 3.2], [0.8, 2.2], [0.3, 0.6]);   // a crest
+    seg('armR', 'feather', [3.6, 21.0, 1.6], [4.6, 13.0, 3.6], [0.6, 3.2], [0.3, 1.6], { mirror: true });          // flight feathers along the arms
+  } else if (SP === 'mossborn') {
+    seg('head', 'leather', [-2.4, 31.6, 0.4], [-4.2, 36.0, 1.6], 1.2, 0.6, { mirror: true });                          // branching antlers of living wood
+    seg('head', 'leather', [-3.4, 34.2, 1.0], [-5.8, 35.8, 0.2], 0.7, 0.35, { mirror: true });
+    seg('head', 'leaf', [-4.0, 36.0, 1.6], [-4.6, 37.2, 2.4], 1.6, 0.9, { mirror: true });                            // and leaves on them
+    seg('body', 'leaf', [-3.8, 24.6, -1.6], [-4.8, 23.4, -2.2], 1.4, 0.6, { mirror: true });                          // moss on the shoulders
+  } else if (SP === 'lumini') {
+    for (const [x, y, z, h] of [[-2.0, 31.6, 0.0, 3.4], [0.6, 32.0, 1.2, 4.6], [2.6, 31.4, -0.4, 2.8], [-0.8, 31.2, 2.8, 3.0]]) seg('head', 'horn', [x, y, z], [x * 1.25, y + h, z * 1.2], 1.3, 0.2);   // crystal shards
+    seg('body', 'horn', [-3.8, 24.6, 0.4], [-5.2, 27.4, 0.8], 1.0, 0.2, { mirror: true });
+  } else if (SP === 'tidecursed') {
+    seg('head', 'skin', [-4.1, 28.2, 0.6], [-6.4, 30.4, 2.6], [0.4, 2.8], [0.3, 1.0], { mirror: true });              // fins for ears
+    seg('head', 'skin', [0, 32.0, -1.0], [0, 31.2, 4.6], [0.4, 2.0], [0.3, 0.6]);                                    // a fin along the crown
+  } else if (SP === 'veilborn') {
+    seg('head', 'cloak', [0, 30.6, 4.0], [0, 22.0, 8.6], [5.6, 1.0], [2.0, 0.4]);                                     // a trailing wisp of shadow
   }
 
   // ---- hoods and hats ----

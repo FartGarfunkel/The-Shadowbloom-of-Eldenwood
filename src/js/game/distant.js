@@ -278,6 +278,21 @@ function* distBuild(g, L, tx, tz) {
             if (topY > G[k]) { G[k] = topY; setC(GC, k, roof); setC(SC, k, wall); FL[k] |= 4; CT[k] = 0; CB[k] = 999; }
           }
         }
+        // (alpha 3) the town's walls and towers, and its paved streets and square, as they really stand
+        const mark = (wx, wz, y, top, side, solid) => { if (wx < x0 || wz < z0 || wx >= x1 || wz >= z1) return; const i = Math.floor((wx - ox) / cs) + 1, j = Math.floor((wz - oz) / cs) + 1, k = j * W + i; if (real[k]) return; if (solid ? y > G[k] : Math.abs(y - G[k]) < 3) { if (solid) G[k] = y; setC(GC, k, top); if (side) setC(SC, k, side); if (solid) { FL[k] |= 4; CT[k] = 0; CB[k] = 999; } } };
+        if (v.tier) {
+          const pave = distBlockColor(B.stone_bricks ?? B.cobblestone, 128, 128), path = distBlockColor(B.cobblestone, 128, 128);
+          for (let dz = -v.P; dz <= v.P; dz++) for (let dx = -v.P; dx <= v.P; dx += Math.max(1, cs >> 1)) mark(v.x + dx, v.z + dz, v.y + 1, pave, null, false);
+          for (const r of v.roads || []) for (const c of r.cells || []) mark(c[0], c[1], c[2] + 1, path, null, false);
+        }
+        if (v.wall) {
+          const Wl = v.wall, stone = Wl.kind === 'stone', wc = distBlockColor(stone ? (B.stone_bricks ?? B.cobblestone) : (B.spruce_log ?? B.log), 128, 128, true), wt = distBlockColor(stone ? (B.stone_bricks ?? B.cobblestone) : (B.spruce_log ?? B.log), 128, 128);
+          const y0 = (x, z) => Math.max(gen.column(x, z).h, SEA);
+          const step = Math.max(1, cs >> 1);
+          for (let x = Wl.x0; x <= Wl.x1; x += step) { mark(x, Wl.z0, y0(x, Wl.z0) + Wl.h + 1, wt, wc, true); mark(x, Wl.z1, y0(x, Wl.z1) + Wl.h + 1, wt, wc, true); }
+          for (let z = Wl.z0; z <= Wl.z1; z += step) { mark(Wl.x0, z, y0(Wl.x0, z) + Wl.h + 1, wt, wc, true); mark(Wl.x1, z, y0(Wl.x1, z) + Wl.h + 1, wt, wc, true); }
+          for (const [tx, tz] of [[Wl.x0, Wl.z0], [Wl.x1, Wl.z0], [Wl.x0, Wl.z1], [Wl.x1, Wl.z1]]) for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) mark(tx + dx, tz + dz, y0(tx, tz) + Wl.h + 5, wt, wc, true);
+        }
         yield;
       }
     }

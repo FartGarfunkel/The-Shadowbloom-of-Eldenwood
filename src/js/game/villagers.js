@@ -292,7 +292,7 @@ const NPC = {
 };
 const npcDay = (g) => g.meta.day || 0;
 function villageRec(g, vid) { const m = g.meta.villages || (g.meta.villages = {}); return m[vid] || (m[vid] = { dead: {} }); }
-function villageById(g, vid) { const m = /^v(-?\d+)_(-?\d+)$/.exec(vid); return m && g.world && g.world.gen.villageAt ? g.world.gen.villageAt(+m[1], +m[2]) : null; }
+function villageById(g, vid) { const m = /^[vt](-?\d+)_(-?\d+)$/.exec(vid); return m && g.world && g.world.gen.villageAt ? g.world.gen.villageAt(+m[1], +m[2]) : null; }
 function villageAtPos(g, x, z, pad = 0) { if (g.dim !== 0 || !g.world || !g.world.gen.villagesNear) return null; const l = g.world.gen.villagesNear(x, z, pad); return l[0] || null; }
 function npcSeedOf(v, i) { return hash32(v.seed, i, 77, 5) % 100000; }
 
@@ -319,6 +319,32 @@ function npcSpawn(g, v, i, kind) {
 }
 function npcNight(g) { const ph = (g.meta.time || 0) / DAY_LEN; return ph > 0.53 && ph < 0.985; }
 function npcPhase(g) { return (g.meta.time || 0) / DAY_LEN; }
+// (alpha 3) bed between ten and eleven at night, each to their own hour (a campaign's held evening keeps them up with you)
+function npcBedtime(N) { return 0.665 + ((N.s >> 3) % 6) * 0.012; }
+// where someone spends this evening: a seat at the tavern or the inn, a bench on the square, or home
+function npcEvening(g, v, e, day) {
+  const N = e.npc;
+  if (!v._evening || v._evening.day !== day) {
+    if (!v._tavern) {
+      const tv = [], bench = [];
+      for (const b of v.blds || []) if ((b.type === 'tavern' || b.type === 'hall') && b.seats) tv.push(...b.seats);
+      for (const s of v.seats || []) if (s.length === 4) bench.push(s);
+      v._tavern = tv; v._bench = bench;
+      const ch = (v.blds || []).find(b => b.type === 'chapel'); v._chapel = ch ? vWorld(ch, (ch.W - 1) / 2, 1, -1) : null;
+      if (v._chapel) v._chapel = [v._chapel[0] + 0.5, v._chapel[1], v._chapel[2] + 0.5];
+    }
+    v._evening = { day, seats: new Map(), usedT: 0, usedB: 0 };
+  }
+  const E = v._evening;
+  if (E.seats.has(N.i)) return E.seats.get(N.i);
+  const r = hashFloat(N.s, day, 17, 3);
+  let out;
+  if (r < 0.55 && E.usedT < v._tavern.length) out = { seat: v._tavern[E.usedT++] };
+  else if (r < 0.75 && E.usedB < v._bench.length) out = { seat: v._bench[E.usedB++] };
+  else out = { home: true };
+  E.seats.set(N.i, out);
+  return out;
+}
 
 // bring villages to life near players, and let them go when everyone leaves
 function npcTick(g, dt) {
@@ -527,14 +553,20 @@ function npcBrain(e, dt, p, dist) {
   // ---- the day of a villager ----
   const J = NPC_JOBS[N.j] || NPC_JOBS.none, shop = !!NPC_SHOPS[N.j];
   let goal = null, act = null;
-  if (night && folk) { goal = folk.home.at; act = 'sleep'; }
+  // (alpha 3) a day with a shape: up at dawn, work (a day off a week each, chapel on the seventh day, the market on the
+  // fourth), then the evening at the tavern, on the square's benches or at home, and bed late
+  const day = Math.floor(g.meta.day || 0), wk = (day + (N.s % 7)) % 7, eve = npcEvening(g, v, e, day);
+  const bed = folk && (ph >= 0.985 || (ph >= 0.5 && ph >= npcBedtime(N)));
+  e._seat = null;
+  if (bed) { goal = folk.home.at; act = 'sleep'; }
   else if (ph < 0.04) { goal = null; act = 'idle'; }
-  else if (folk && folk.work && (ph < 0.3 || (shop && ph < 0.46))) { goal = folk.work.at; act = 'work'; }
-  else if (ph >= 0.43 && v.seats && v.seats.length) {
-    const s = v.seats[N.i % v.seats.length];
+  else if (day % 7 === 6 && ph >= 0.05 && ph < 0.17 && v._chapel && N.j !== 'none' && (N.s % 3) !== 0) { goal = v._chapel; act = 'social'; e.goal = v._chapel; e.goalT = 5; }
+  else if (folk && folk.work && wk !== 0 && (ph < 0.3 || (shop && ph < 0.46)) && !(day % 7 === 3 && !shop && ph > 0.18)) { goal = folk.work.at; act = 'work'; }
+  else if (ph >= 0.43 && eve && eve.seat) {
+    const s = e._seat = eve.seat;
     goal = s[4] ? [s[4][0], s[1], s[4][1]] : [s[0] + DXL[s[3]], s[1], s[2] + DZL[s[3]]]; act = 'sit';        // walk up to the bench (or the chair), then sit down on it
-    if (N.i >= v.seats.length) { act = 'social'; goal = null; }
-  } else act = 'social';
+  } else if (ph >= 0.5 && eve && eve.home && folk) { goal = folk.home.at; act = 'home'; }
+  else act = 'social';
   if (act === 'social') {
     if (!e.goal || e.goalT <= 0) { e.goal = npcPickSpot(g, v, e, Math.random() < 0.55 ? 'plaza' : 'road'); e.goalT = 25 + Math.random() * 25; }
     e.goalT -= dt; goal = e.goal;
@@ -548,7 +580,7 @@ function npcBrain(e, dt, p, dist) {
   if (goal) {
     const d = Math.hypot(goal[0] + (act === 'social' ? 0 : 0.5) - e.x, goal[2] + (act === 'social' ? 0 : 0.5) - e.z);
     const gx = act === 'social' ? goal[0] : goal[0] + 0.5, gz = act === 'social' ? goal[2] : goal[2] + 0.5;
-    const seated = act === 'sit' && (() => { const s = v.seats[N.i % v.seats.length]; return Math.hypot(s[0] + 0.5 - e.x, s[2] + 0.5 - e.z) < 0.35 && Math.abs(e.y - s[1] - 0.25) < 0.3; })();
+    const seated = act === 'sit' && (() => { const s = e._seat || v.seats[N.i % v.seats.length]; return Math.hypot(s[0] + 0.5 - e.x, s[2] + 0.5 - e.z) < 0.35 && Math.abs(e.y - s[1] - 0.25) < 0.3; })();
     if (d > 0.6 && !seated) {
       // stuck for a long time and nobody about to see it: step there (villagers know their way home)
       if (e.stuckGo > 8 && !g.pawns().some(q => Math.hypot(q.x - e.x, q.z - e.z) < 24)) { e.x = gx; e.y = goal[1] + 0.01; e.z = gz; e.stuckGo = 0; e.path = null; return { want: 0, dir: e.yaw }; }
@@ -564,7 +596,7 @@ function npcBrain(e, dt, p, dist) {
       return { want: 0, dir: e.yaw };
     }
     // (0.9.0.11) on the seat the way you sit on one: half a block up, held still (no physics fighting the stair)
-    if (act === 'sit') { const s = v.seats[N.i % v.seats.length]; e.sitHeld = s[5] || null; e.x = s[0] + 0.5; e.z = s[2] + 0.5; e.y = s[1] + 0.25; e.vx = e.vy = e.vz = 0; e.yaw = Math.atan2(-DXL[s[3]], -DZL[s[3]]); N.p |= NPC_P.sit; e.pinned = true; e.path = null; return { want: 0, dir: e.yaw }; }
+    if (act === 'sit') { const s = e._seat || v.seats[N.i % v.seats.length]; e.sitHeld = s[5] || null; e.x = s[0] + 0.5; e.z = s[2] + 0.5; e.y = s[1] + 0.25; e.vx = e.vy = e.vz = 0; e.yaw = Math.atan2(-DXL[s[3]], -DZL[s[3]]); N.p |= NPC_P.sit; e.pinned = true; e.path = null; return { want: 0, dir: e.yaw }; }
     if (act === 'work') {
       const f = folk.work.face; e.yaw = turnTo(e.yaw, Math.atan2(-DXL[f], -DZL[f]), dt * 6);
       if (J.work === 'read') N.p |= NPC_P.read;
@@ -1105,6 +1137,8 @@ class NpcShop {
     this.el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { t.tab = b.dataset.tab; this.sel = 0; t.g.sfx.play('click'); this.draw(); });
     this.el.querySelector('[data-back]').onclick = () => this.close();
     this.el.querySelectorAll('.sh-row').forEach(b => b.onclick = () => this.trade(L[+b.dataset.k]));
+    // (alpha 3) keep the row the controller is on in view: long lists scroll with it
+    const sel = this.el.querySelector('.sh-row.sel'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
   }
   trade(l) {
     const t = this.t, lp = t.lp, p = lp.player, inv = p.inv, g = t.g;
@@ -1178,7 +1212,7 @@ class QuestBoard {
   frame(dt, inp) {
     if (inp.padB || inp.padStart || inp.inventory) { this.close(); return; }
     const bs = [...this.el.querySelectorAll('.qb-note button')];
-    if (inp.navX || inp.navY) { this.sel = (this.sel + ((inp.navX || inp.navY) > 0 ? 1 : bs.length - 1)) % Math.max(1, bs.length); bs.forEach((b, i) => b.classList.toggle('sel', i === this.sel)); }
+    if (inp.navX || inp.navY) { this.sel = (this.sel + ((inp.navX || inp.navY) > 0 ? 1 : bs.length - 1)) % Math.max(1, bs.length); bs.forEach((b, i) => b.classList.toggle('sel', i === this.sel)); if (bs[this.sel] && bs[this.sel].scrollIntoView) bs[this.sel].scrollIntoView({ block: 'nearest' }); }
     if (inp.padA && bs[this.sel]) bs[this.sel].click();
   }
   close() {

@@ -66,7 +66,9 @@ function campaignDefine(C) {
     if (it.ac) props.dndAcBonus = it.ac;
     if (it.letter) props.lore = it.letter;
     defItem(k, props);
-    if (it.art && !it.icon && !base) CAMP_ICONS.push([k, it.art, it.cols || ['#c8a060', '#6a4a2a', '#f0d8a0']]);
+    // (alpha 3) the 3D model follows the base weapon, or the picture's kind
+    ITEMS[k].modelOf = it.base || null; ITEMS[k].art = it.art || null;
+    if (it.art && !it.icon && (!base || it.cols)) CAMP_ICONS.push([k, it.art, it.cols || ['#c8a060', '#6a4a2a', '#f0d8a0']]);
   }
   // letters and books: readable, never loot
   for (const [k, L] of Object.entries(C.letters)) {
@@ -90,7 +92,7 @@ const CAMP_ICONS = [];
   paintMonsterTiles = function () { base(); for (const [k, art, cols] of CAMP_ICONS) addItem('dnd_c_' + k, p => dndPaintArt(p, art, cols)); };
   // campaign items without an icon of their own wear their picture under dnd_c_<key>
   const baseIcons = typeof buildIcons === 'function' ? buildIcons : null;
-  if (baseIcons) buildIcons = function () { for (const [k] of CAMP_ICONS) if (ITEMS[k] && ITEMS[k].icon === 'dnd_' + (C_ART_OF[k] || 'pack')) ITEMS[k].icon = 'dnd_c_' + k; return baseIcons(); };
+  if (baseIcons) buildIcons = function () { for (const [k, art] of CAMP_ICONS) if (ITEMS[k] && (ITEMS[k].icon === 'dnd_' + (C_ART_OF[k] || 'pack') || ITEMS[k].icon === 'dnd_' + art || ITEMS[k].modelOf)) ITEMS[k].icon = 'dnd_c_' + k; return baseIcons(); };
 }
 const C_ART_OF = {};
 
@@ -104,6 +106,28 @@ function campState(g) {
   return s;
 }
 // the campaign of the world being generated (the generator has no game to ask)
+// can a story person slip away now: nobody talking with them, and nobody who'd see it happen
+function campCanVanish(g, ent) {
+  if (ent.holdT > 0) return false;
+  for (const l of g.locals) if (l.npcUI && (l.npcUI.e === ent || l.npcUI.ent === ent || l.npcUI.m === ent)) return false;
+  return !campSeen(g, ent);
+}
+function campSeen(g, ent) {
+  const eyes = g.locals.filter(l => !l.player.dead).map(l => ({ x: l.player.x, y: l.player.y + 1.6, z: l.player.z, yaw: l.player.yaw }));
+  if (g.net && g.net.remotes) for (const r of g.net.remotes.values()) if (r.placed && !r.dead && Number.isFinite(r.x)) eyes.push({ x: r.x, y: (r.y || 0) + 1.6, z: r.z, yaw: r.yaw ?? r.tyaw ?? 0 });
+  const w = g.world, tx = ent.x, ty = ent.y + 1.2, tz = ent.z;
+  for (const E of eyes) {
+    const dx = tx - E.x, dy = ty - E.y, dz = tz - E.z, d = Math.hypot(dx, dy, dz);
+    if (d > 44) continue;
+    if (d < 3) return true;
+    const fx = -Math.sin(E.yaw), fz = -Math.cos(E.yaw), hd = Math.hypot(dx, dz) || 1;
+    if ((dx * fx + dz * fz) / hd < 0.3) continue;            // behind them, or off to the side
+    let clear = true;
+    for (let t = 0.6; t < d - 0.6; t += 0.5) { const id = w.getBlock(Math.floor(E.x + dx * t / d), Math.floor(E.y + dy * t / d), Math.floor(E.z + dz * t / d)); if (T_OPAQUE[id]) { clear = false; break; } }
+    if (clear) return true;
+  }
+  return false;
+}
 function campGenDef() { return typeof VILLAGE_CTX !== 'undefined' && VILLAGE_CTX && VILLAGE_CTX.meta ? campOfMeta(VILLAGE_CTX.meta) : (CAMP_RT.genCampaign ? CAMPAIGNS[CAMP_RT.genCampaign] : null); }
 
 // ---- where things are -----------------------------------------------------------------------------------------
@@ -243,7 +267,12 @@ function campDo(g, fx, lp, ctx = {}) {
       if (e.note) campLog(g, e.note);
       if (e.follow) { S.follow[e.follow] = 1; delete S.gone[e.follow]; }
       if (e.stay) delete S.follow[e.stay];
-      if (e.leave) { S.gone[e.leave] = 1; delete S.follow[e.leave]; const ent = CAMP_RT.ents.get(e.leave); if (ent) { g.burst(ent.x, ent.y + 1, ent.z, 'smoke', 12, 0.6); ent.remove = true; CAMP_RT.ents.delete(e.leave); } }
+      if (e.leave) {
+        S.gone[e.leave] = 1; delete S.follow[e.leave]; const ent = CAMP_RT.ents.get(e.leave), D = C.npcs[e.leave];
+        // (alpha 3) someone like Fate finishes what she's saying, walks off, and is gone the moment nobody's looking
+        if (ent && D && (D.seek || D.walkOff) && !e.poof) ent.campDepart = true;
+        else if (ent) { g.burst(ent.x, ent.y + 1, ent.z, 'smoke', 12, 0.6); ent.remove = true; CAMP_RT.ents.delete(e.leave); }
+      }
       if (e.back) delete S.gone[e.back];
       if (e.narrate) campNarrate(g, [].concat(e.narrate), e.title);
       if (e.toast) for (const l of g.locals) l.toast(e.toast, e.kind || '');
@@ -618,7 +647,7 @@ function campNpcTick(g, dt) {
     const ent = CAMP_RT.ents.get(id);
     const want = !S.gone[id] && (!N.if || campTest(g, N.if)) && !(N.until && campTest(g, N.until));
     if (ent && (!ent.alive || ent.remove || !g.entities.includes(ent))) { CAMP_RT.ents.delete(id); if (!ent.alive && N.mortal) S.gone[id] = 1; continue; }
-    if (!want) { if (ent) { ent.remove = true; CAMP_RT.ents.delete(id); } continue; }
+    if (!want) { if (ent) { if (campCanVanish(g, ent)) { ent.remove = true; CAMP_RT.ents.delete(id); } else ent.campDepart = true; } continue; }
     if (ent) {
       // gone too far from everyone: let them go (they come back when you do), unless they travel with you
       if (!S.follow[id] && !ps.some(p => Math.hypot(p.x - ent.x, p.z - ent.z) < 120)) { ent.remove = true; CAMP_RT.ents.delete(id); }
@@ -656,7 +685,12 @@ function campNpcTick(g, dt) {
     N.p &= ~64;
     const ps = g.pawns().filter(p => !p.dead);
     let target = null;
-    if (S.follow[N.cid]) {
+    if (this.campDepart) {
+      // leaving: away from the party, at a walk
+      if (!this._departTo) { let best = null, bd = 1e9; for (const p of ps) { const d = Math.hypot(p.x - this.x, p.z - this.z); if (d < bd) { bd = d; best = p; } } const a = best ? Math.atan2(this.x - best.x, this.z - best.z) : Math.random() * TAU; this._departTo = [this.x + Math.sin(a) * 30, this.y, this.z + Math.cos(a) * 30]; }
+      target = this._departTo;
+      if (Math.hypot(target[0] - this.x, target[2] - this.z) < 1.5) target = null;
+    } else if (S.follow[N.cid]) {
       let best = null, bd = 1e9; for (const p of ps) { const d = Math.hypot(p.x - this.x, p.z - this.z); if (d < bd) { bd = d; best = p; } }
       if (best && bd > 40) { this.x = best.x + 1; this.z = best.z + 1; this.y = best.y; }
       else if (best && bd > 3.2) target = [best.x, best.y, best.z];

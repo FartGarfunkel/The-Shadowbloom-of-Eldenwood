@@ -455,15 +455,21 @@ function buildAtlas() {
       { k: hexRGB('#1a1a1a'), R: hexRGB('#ff4040'), a: hexRGB('#4f6a4a') });
   });
   addTile('ghoul_cloth', p => { p.noise(hexRGB('#3a4a7a'), 0.25); for (let i = 0; i < 10; i++) p.set(Math.floor(p.rand() * 16), 15 - Math.floor(p.rand() * 2), [0, 0, 0], 0); });
-  // The default-skinned figure. Eyes are white, with no pupils.
-  const HB = { H: hexRGB('#3b2414'), h: hexRGB('#2c1a0e'), S: hexRGB('#c4906c'), s: hexRGB('#b07e5c'), W: hexRGB('#ffffff'), N: hexRGB('#a8735a'), M: hexRGB('#6a3a24') };
+  // (alpha 3) the Watcher: an original look. Ash-pale and gaunt, long black hair, a hooded robe of dusk-violet veined
+  // with the Bloom's black, a silver clasp; white eyes with no pupils, as ever.
+  const HB = { H: hexRGB('#141018'), h: hexRGB('#0a080e'), S: hexRGB('#b8b4bc'), s: hexRGB('#8e8a96'), W: hexRGB('#ffffff'), N: hexRGB('#9a96a2'), M: hexRGB('#4a3a4e'), R: hexRGB('#3a2a4a'), r: hexRGB('#281c36'), V: hexRGB('#0e0a12') };
   const up2 = (rows) => rows.flatMap(r => { const w = r.split('').map(c => c + c).join(''); return [w, w]; });
-  addTile('hb_face', p => p.art(up2(['HHHHHHHH', 'HHHHHHHH', 'HSSSSSSH', 'SWWSSWWS', 'SSSNNSSS', 'SSMMMMSS', 'SSsSSsSS', 'SSSSSSSS']), HB));
-  addTile('hb_head_side', p => p.art(up2(['HHHHHHHH', 'HHHHHHHH', 'HHHHHSSS', 'HHSSSSSS', 'HSSSSSSS', 'SSSSSSSS', 'SSSSSSSS', 'sSSSSSSs']), HB));
-  addTile('hb_hair', p => { p.noise(hexRGB('#3b2414'), 0.15); });
-  addTile('hb_shirt', p => { p.noise(hexRGB('#2aa6a6'), 0.08); for (let x = 0; x < 16; x++) p.set(x, 15, hexRGB('#1e7a7a')); });
-  addTile('hb_arm', p => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, y < 5 ? shade(hexRGB('#2aa6a6'), 0.95 + p.rand() * 0.1) : shade(hexRGB('#c4906c'), 0.96 + p.rand() * 0.08)); });
-  addTile('hb_pants', p => { p.noise(hexRGB('#3a3aa0'), 0.08); for (let x = 0; x < 16; x++) { p.set(x, 14, hexRGB('#5a5a5a')); p.set(x, 15, hexRGB('#4a4a4a')); } });
+  addTile('hb_face', p => p.art(up2(['RRRRRRRR', 'RHHHHHHR', 'HHsSSsHH', 'HSWWSWWS', 'HsSNNSsH', 'HSsMMsSH', 'HHSssSHH', 'HHHSSHHH']), HB));
+  addTile('hb_head_side', p => p.art(up2(['RRRRRRRR', 'RRRRRRRR', 'RRRHHHHH', 'RRHHHHSS', 'RRHHHSSS', 'RHHHHSSs', 'RHHHHHSs', 'rHHHHHHH']), HB));
+  addTile('hb_hair', p => { p.noise(hexRGB('#3a2a4a'), 0.18); for (let y = 10; y < 16; y++) for (let x = 2; x < 14; x++) if (p.rand() < 0.7) p.set(x, y, hexRGB('#141018')); });
+  addTile('hb_shirt', p => {
+    p.noise(hexRGB('#3a2a4a'), 0.12);
+    for (let i = 0; i < 5; i++) { let x = Math.floor(p.rand() * 16), y = 15; for (let k = 0; k < 9; k++) { p.set(x, y, hexRGB('#0e0a12')); x += p.rand() < 0.5 ? 1 : -1; y -= 1; if (x < 0 || x > 15 || y < 0) break; } }
+    for (let y = 0; y < 16; y++) { p.set(7, y, hexRGB('#281c36')); p.set(8, y, hexRGB('#281c36')); }
+    p.set(7, 2, hexRGB('#d8d8e8')); p.set(8, 2, hexRGB('#d8d8e8')); p.set(7, 3, hexRGB('#a0a0b8')); p.set(8, 3, hexRGB('#a0a0b8'));
+  });
+  addTile('hb_arm', p => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, y < 12 ? shade(hexRGB('#3a2a4a'), 0.9 + p.rand() * 0.14) : y < 13 ? hexRGB('#281c36') : shade(hexRGB('#b8b4bc'), 0.92 + p.rand() * 0.1)); for (let k = 0; k < 6; k++) p.set(Math.floor(p.rand() * 16), Math.floor(p.rand() * 11), hexRGB('#0e0a12')); });
+  addTile('hb_pants', p => { p.noise(hexRGB('#2e2238'), 0.12); for (let x = 0; x < 16; x++) { if (p.rand() < 0.6) p.set(x, 15, [0, 0, 0], 0); p.set(x, 13, hexRGB('#1c1424')); } });
   addTile('golem_rock', p => {
     p.noise(hexRGB('#3a3434'), 0.3);
     for (let i = 0; i < 5; i++) { let x = Math.floor(p.rand() * 16), y = Math.floor(p.rand() * 16); for (let k = 0; k < 6; k++) { p.set(x, y, hexRGB(k % 2 ? '#ff8a3d' : '#e8641c')); x += p.rand() < 0.5 ? 1 : -1; y += 1; } }

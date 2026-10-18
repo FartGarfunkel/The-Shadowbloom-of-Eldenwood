@@ -11,7 +11,7 @@
 
 // 1 = the 0.4 generator (world/worldgen_v1.js), 2 = 0.5: the full block set, new trees and caves.
 // 3 = 0.9: rivers, and the crust at the bottom of the world you can break through (game/worldupdate.js).
-const GEN_VERSION = 5;   // 4: villages stand on level ground (game/villageflat.js); 5: RPG towns (game/towns.js)
+const GEN_VERSION = 6;   // 4: villages stand on level ground (game/villageflat.js); 5: RPG towns (game/towns.js); 6: (alpha 3) gates, roads between the campaign's places
 function makeWorldGen(seed, dim, genVersion) { return (genVersion || 1) < 2 ? new WorldGenV1(seed, dim, genVersion || 1) : new WorldGen(seed, dim, genVersion); }
 const BIOME = { OCEAN: 0, BEACH: 1, PLAINS: 2, FOREST: 3, DESERT: 4, TAIGA: 5, MOUNTAINS: 6 };
 const BIOME_NAME = ['Ocean', 'Beach', 'Plains', 'Forest', 'Desert', 'Taiga', 'Mountains'];

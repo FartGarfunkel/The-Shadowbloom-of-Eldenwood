@@ -60,7 +60,15 @@ void main(){
   if (sway > 0.5) {
     vec2 w = aPos.xz + uWorld;
     float gust = 0.6 + 0.4 * sin(uTime * 0.35 + w.x * 0.02 + w.y * 0.015);
-    if (sway > 31.5) {      // (0.9.0.50) water, and how open it is (32 + 0..15): the open sea swells, more in a storm; a pond barely stirs
+    if (sway > 47.5) {      // (alpha 3) cloth in the wind: flags, banners, bunting, washing (48 + k flaps across z, 64 + k across x; k: how far out)
+      bool acrossX = sway > 63.5;
+      float k = (sway - (acrossX ? 64.0 : 48.0)) / 15.0;
+      float ph = w.x * 0.37 + w.y * 0.29;
+      float wave = sin(uTime * 5.1 - k * 4.2 + ph) * 0.65 + sin(uTime * 3.3 - k * 2.6 + ph * 1.7) * 0.35;
+      float a = k * (0.07 + 0.2 * uWind) * gust * wave;
+      if (acrossX) p.x += a; else p.z += a;
+      p.y -= abs(a) * 0.2 * k;
+    } else if (sway > 31.5) {      // (0.9.0.50) water, and how open it is (32 + 0..15): the open sea swells, more in a storm; a pond barely stirs
       float k = (sway - 32.0) / 15.0, A = k * (0.04 + 0.14 * uSea);
       float ripple = sin(uTime * 1.6 + w.x * 0.8 + w.y * 0.55) * 0.035 + sin(uTime * 1.05 - w.x * 0.37 + w.y * 0.77) * 0.025;
       float swell = sin(uTime * 0.9 + w.x * 0.21 + w.y * 0.13) * 0.6 + sin(uTime * 0.63 - w.x * 0.09 + w.y * 0.17) * 0.4;

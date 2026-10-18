@@ -49,11 +49,11 @@ function paintInstrumentFrames() {
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
       const d = Math.hypot(x - 7.5, y - 7.5);
       if (d > 5.9) continue;
-      const alpha = Math.atan2(x - 7.5, -(y - 7.5)), beta = alpha + phi;   // where on the turning dial this pixel is
+      const alpha = Math.atan2(x - 7.5, -(y - 7.5)), beta = alpha - phi;   // where on the turning dial this pixel is ((alpha 3) turning clockwise)
       const day = Math.cos(beta) > 0;
       let c = day ? H('#5a9ae8') : H('#121a3a');
       if (Math.abs(Math.cos(beta)) < 0.12) c = H('#6a4a2a');               // the horizon
-      const sx = Math.sin(-phi) * 3.3, sy = -Math.cos(-phi) * 3.3;           // the sun on the dial
+      const sx = Math.sin(phi) * 3.3, sy = -Math.cos(phi) * 3.3;             // the sun on the dial: rising on the left, high at noon, setting on the right
       if (Math.hypot(x - 7.5 - sx, y - 7.5 - sy) < 1.6) c = H('#ffd84a');
       if (Math.hypot(x - 7.5 + sx, y - 7.5 + sy) < 1.4) c = H('#e8e8f0');    // the moon opposite
       if (!day && (Math.sin(beta * 7) > 0.97) && d > 2.5) c = H('#d8d8f8');

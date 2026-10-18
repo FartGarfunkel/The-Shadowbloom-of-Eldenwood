@@ -114,9 +114,15 @@ class Gamepads {
       const s = InputManager.blankState();
       s.fromPad = true;
       s.mx = lx; s.mz = ly;
-      const sens = (S.padSens || 1) * 2.8 * dt;
-      s.lookX = rx * Math.abs(rx) * sens * 1.15;
-      s.lookY = ry * Math.abs(ry) * sens * (S.invertY ? -1 : 1);
+      // (alpha 3) a livelier camera: a gentler curve than squaring (small nudges respond at once), a quicker top speed,
+      // and a turn that speeds up a little more when you hold the stick right over
+      const curve = (v) => Math.sign(v) * Math.pow(Math.abs(v), 1.55);
+      const full = Math.hypot(rx, ry) > 0.92, ht = (this.lookHold || (this.lookHold = new Map())).get(i) || 0;
+      const nh = full ? ht + dt : 0; this.lookHold.set(i, nh);
+      const boost = 1 + Math.min(0.45, Math.max(0, nh - 0.18) * 1.3);
+      const sens = (S.padSens || 1) * 3.3 * dt * boost;
+      s.lookX = curve(rx) * sens * 1.15;
+      s.lookY = curve(ry) * sens * 0.9 * (S.invertY ? -1 : 1);
       if ((this.binds || (this.binds = padBinds(S.padBinds))).sprint.some(k => edge(k))) this.sprint.set(i, !this.sprint.get(i));
       if (Math.hypot(lx, ly) < 0.3) this.sprint.set(i, false);
       s.sprint = !!this.sprint.get(i);

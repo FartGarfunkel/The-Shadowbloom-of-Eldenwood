@@ -239,7 +239,7 @@ function dndAllyNear(lp, e) { return lp.g.pawns().some(p => p !== lp && p.player
     // concentration: a hit makes you hold on (Constitution save, DC 10 or half the damage)
     if (c.conc && dmg > 0) {
       // (alpha 2) a hard enough blow breaks your hold on a spell: harder the tougher you are
-      if (dmg >= 8 + Math.max(0, c.d.saves.con) * 2) { this.toast(`You lose your concentration on ${DND_SPELLS[c.conc.k] ? DND_SPELLS[c.conds.concName || c.conc.k].name : 'your spell'}`, 'warn'); dndEndConc(this); }
+      if (dmg >= 8 + Math.max(0, c.d.saves.con) * 2 && !(c.feats && c.feats.includes('Iron Constitution'))) { this.toast(`You lose your concentration on ${DND_SPELLS[c.conc.k] ? DND_SPELLS[c.conds.concName || c.conc.k].name : 'your spell'}`, 'warn'); dndEndConc(this); }
     }
     // the armour already did its work in the roll: don't let the game take its share again
     const s2 = Object.assign({}, src, { bypassArmor: true, dnd: true });
@@ -458,7 +458,7 @@ Object.assign(LocalPlayer.prototype, {
         <div class="ds-col"><div class="pk-h">Abilities</div><div class="ds-abs">${abil}</div>
           <div class="pk-h">In hand</div><div class="ds-weap"><b>${esc(W.name)}</b> ${dndSigned(A.toHit)} to hit · ${W.ver && !this.player.inv.offhand ? W.ver[0] + 'd' + W.ver[1] : A.dice[0] + 'd' + A.dice[1]}${A.dmg ? dndSigned(A.dmg) : ''} ${esc(W.dmg)}${d.armorType ? ` · ${d.armorType} armour${d.untrained ? ' (untrained!)' : ''}` : ''}${d.shield ? ' · shield' : ''}</div>
           ${C.caster ? `<div class="pk-h">Spellcasting (${DND_ABILITY_NAMES[C.castAb]})</div><div class="ds-weap">Save DC ${d.spellDC} · spell attack ${dndSigned(d.spellAtk)} · slots ${c.slots.map((n, i) => (i + 1) + ':' + n + '/' + c.slotsMax[i]).join(' ')}</div>` : ''}
-          <div class="ds-rest"><button class="btn tiny" data-rest="short">Short rest (1 hour)</button><span>A night in a bed is a long rest.</span></div>
+          <div class="ds-rest"><button class="btn tiny" data-rest="short">Short rest (1 hour)</button><button class="btn tiny" data-rest="camp">Make camp (long rest)</button><span>A night in a bed or at camp is a long rest.</span></div>
         </div>
         <div class="ds-col"><div class="pk-h">Skills</div><div class="ds-sks">${skills}</div></div>
         <div class="ds-col"><div class="pk-h">Features &amp; traits</div><ul class="ds-feats">${sig ? `<li><b>${esc(sig.name)}</b> (${dndKeyName(this, 'dndAbility')}) — ${esc(sig.desc)}</li>` : ''}${feats.join('')}</ul>
