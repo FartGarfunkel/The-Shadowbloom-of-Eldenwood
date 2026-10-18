@@ -43,7 +43,8 @@ function rspawnRegionAt(g, x, y, z) {
   const col = gen.column(Math.floor(x), Math.floor(z));
   if (y < col.h - 12) return ['caverns'];
   const L = C && campLandsOf(gen);
-  if (L) for (const l of L) { if (l.auto) continue; const d = Math.hypot(x - l.at[0], z - l.at[1]); if (d < l.r + (l.fade || 0) * 0.5) { const r = rspawnLandRegion(l); if (r) return r; } }
+  // (alpha 8) the most particular land here decides: the vale's basin inside the lowland around it, a heart inside a wood
+  if (L) { let best = null, bestR = Infinity; for (const l of L) { if (l.auto || l.r >= bestR || (l.bx0 !== undefined && !campLandIn(l, x, z))) continue; const d = campLandD(l, x, z); if (d < l.r + (l.fade || 0) * 0.5) { const r = rspawnLandRegion(l); if (r) { best = r; bestR = l.r; } } } if (best) return best; }
   if (col.h < SEA - 1) return ['sea'];
   if (col.biome === BIOME.BEACH) return ['coast'];
   if (col.biome === BIOME.DESERT) return ['desert'];

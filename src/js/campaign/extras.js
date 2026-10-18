@@ -423,11 +423,23 @@ function campLandsOf(gen) {
   for (const T of Object.values(C.towns)) L.push({ at: T.at, r: T.groundR || (T.size === 'large' ? 100 : T.size === 'small' ? 52 : 72), fade: 36, kind: 'raise', floor: 4, auto: true });
   for (const P of Object.values(C.places)) if (!P.noGround) L.push({ at: P.at, r: P.kind === 'dungeon' ? 34 : (P.size || 9) + 16, fade: 26, kind: 'raise', floor: 3, auto: true });
   for (const l of C.lands || []) L.push(Object.assign({ fade: 30 }, l));
-  for (const l of L) { l.R = l.r + l.fade; l.R2 = l.R * l.R; }
+  for (const l of L) {
+    l.R = l.r + l.fade; l.R2 = l.R * l.R;
+    const to = l.to || l.at;   // (alpha 8) a land can be long: from at to to (a ridge, a coast, a forest's edge)
+    l.bx0 = Math.min(l.at[0], to[0]) - l.R; l.bx1 = Math.max(l.at[0], to[0]) + l.R; l.bz0 = Math.min(l.at[1], to[1]) - l.R; l.bz1 = Math.max(l.at[1], to[1]) + l.R;
+  }
   gen._campLands = L; gen._campLandsFor = C.id;
   return L;
 }
 function campLandW(l, d) { return d <= l.r ? 1 : d >= l.R ? 0 : 1 - smoothstep(l.r, l.R, d); }
+// how far a column is from a land's middle (its line, for a long one)
+function campLandD(l, x, z) {
+  if (!l.to) return Math.hypot(x - l.at[0], z - l.at[1]);
+  const ax = l.at[0], az = l.at[1], vx = l.to[0] - ax, vz = l.to[1] - az, L2 = vx * vx + vz * vz || 1;
+  const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / L2));
+  return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
+}
+function campLandIn(l, x, z) { return x >= l.bx0 && x <= l.bx1 && z >= l.bz0 && z <= l.bz1; }
 {
   const baseCol = WorldGen.prototype.column;
   WorldGen.prototype.column = function (x, z) {
@@ -436,9 +448,10 @@ function campLandW(l, d) { return d <= l.r ? 1 : d >= l.R ? 0 : 1 - smoothstep(l
     const L = campLandsOf(this); if (!L || !L.length) return c;
     let out = null;
     for (const l of L) {
-      const dx = x - l.at[0], dz = z - l.at[1], d2 = dx * dx + dz * dz;
-      if (d2 >= l.R2) continue;
-      const d = Math.sqrt(d2), w = campLandW(l, d);
+      if (!campLandIn(l, x, z)) continue;
+      const d = campLandD(l, x, z);
+      if (d >= l.R) continue;
+      const w = campLandW(l, d);
       if (w <= 0) continue;
       if (!out) out = { h: c.h, biome: c.biome, temp: c.temp, humid: c.humid, river: c.river };
       const n = this.nDetail.noise2(x / 23, z / 23);
@@ -459,15 +472,19 @@ function campLandW(l, d) { return d <= l.r ? 1 : d >= l.R ? 0 : 1 - smoothstep(l
           out.h = Math.round(out.h + (want - out.h) * (d < l.r ? 1 : w) + rimK);
           break;
         }
+        // (alpha 8) high ground gentled: peaks above top pressed down toward it (the farmland round a town)
+        case 'soften': { const top = SEA + (l.top || 18); if (out.h > top) out.h = Math.round(top + (out.h - top) * (1 - w * (1 - (l.keep != null ? l.keep : 0.35)))); break; }
         case 'hills': { const r = 1 - Math.abs(this.nRidge.fbm2(x / 70, z / 70, 2)); out.h = Math.round(Math.max(out.h, SEA + 4) + r * r * (l.h || 20) * w); break; }
         default: break;
       }
       if (l.temp != null) out.temp = out.temp + (l.temp - out.temp) * w;
       if (l.humid != null) out.humid = out.humid + (l.humid - out.humid) * w;
       if (l.biome && w > 0.45 && CAMP_BIOME[l.biome] != null) out.biome = CAMP_BIOME[l.biome];
+      // (alpha 8) a land can tame the wild biomes under it (no desert in the middle of Eldenwood's farmland)
+      if (l.fix && w > 0.45) { for (const [from, to] of Object.entries(l.fix)) if (out.biome === CAMP_BIOME[from] && CAMP_BIOME[to] != null && (from !== 'ocean' || out.h >= SEA)) out.biome = CAMP_BIOME[to]; }
     }
     if (!out) return c;
-    if (out.h < SEA - 1) { if (out.biome !== CAMP_BIOME.forest || !L.some(l => l.kind === 'marsh' && Math.hypot(x - l.at[0], z - l.at[1]) < l.R)) out.biome = BIOME.OCEAN; }
+    if (out.h < SEA - 1) { if (out.biome !== CAMP_BIOME.forest || !L.some(l => l.kind === 'marsh' && campLandIn(l, x, z) && campLandD(l, x, z) < l.R)) out.biome = BIOME.OCEAN; }
     else if (out.h > SEA + 1 && (out.biome === BIOME.OCEAN || out.biome === BIOME.BEACH)) out.biome = out.temp < -0.3 ? BIOME.TAIGA : BIOME.PLAINS;
     if (out.h > SEA && out.river) out.river = 0;
     return out;
@@ -480,13 +497,13 @@ function campLandW(l, d) { return d <= l.r ? 1 : d >= l.R ? 0 : 1 - smoothstep(l
     try {
       const L = campLandsOf(this); if (!L) return r;
       const bx = ch.cx * 16, bz = ch.cz * 16;
-      const near = L.filter(l => !l.auto && (l.surface || l.deco || l.crater || l.lily) && Math.abs(bx + 8 - l.at[0]) < l.R + 12 && Math.abs(bz + 8 - l.at[1]) < l.R + 12);
+      const near = L.filter(l => !l.auto && (l.surface || l.deco || l.crater || l.lily) && bx + 8 > l.bx0 - 12 && bx + 8 < l.bx1 + 12 && bz + 8 > l.bz0 - 12 && bz + 8 < l.bz1 + 12);
       if (!near.length) return r;
       const NATURAL = new Set(['grass', 'dirt', 'snowy_grass', 'sand', 'stone', 'gravel', 'coarse_dirt', 'clay', 'podzol', 'sandstone'].map(k => B[k]).filter(v => v !== undefined));
       for (let lz = 0; lz < 16; lz++) for (let lx = 0; lx < 16; lx++) {
         const x = bx + lx, z = bz + lz;
         for (const l of near) {
-          const d = Math.hypot(x - l.at[0], z - l.at[1]); if (d >= l.R) continue;
+          const d = campLandD(l, x, z); if (d >= l.R) continue;
           const w = campLandW(l, d), q = hashFloat(x, z, this.seed, 71);
           if (q > w + 0.1) continue;
           const col = this.column(x, z), h = col.h;
@@ -502,6 +519,106 @@ function campLandW(l, d) { return d <= l.r ? 1 : d >= l.R ? 0 : 1 - smoothstep(l
       }
       ch.recomputeMaxY();
     } catch (e) { console.warn('campaign land', e); }
+    return r;
+  };
+}
+
+// (alpha 8) the trees of a land: trees: { density (x as many), types: { birch: 0.6, ... } (shares), bare (share leafless) }
+// The most particular land over a chunk's middle decides (a heart inside a wood, a hollow inside a vale).
+{
+  const baseTrees = WorldGen.prototype.treesForChunk;
+  WorldGen.prototype.treesForChunk = function (cx, cz) {
+    const list = baseTrees.call(this, cx, cz);
+    if (this.dim !== 0 || list._camp) return list;
+    list._camp = true;
+    try {
+      const L = campLandsOf(this); if (!L) return list;
+      const mx = cx * 16 + 8, mz = cz * 16 + 8;
+      let T = null, best = Infinity;
+      for (const l of L) { if (!l.trees || !campLandIn(l, mx, mz)) continue; const d = campLandD(l, mx, mz); if (d >= l.R || campLandW(l, d) < 0.45 || l.r >= best) continue; best = l.r; T = l.trees; }
+      if (!T) return list;
+      const rnd = mulberry32(hash32(this.seed, cx, cz, 97));
+      const dens = T.density != null ? T.density : 1;
+      if (dens < 1) { const keep = list.filter(t => t.type === 'mangrove' || rnd() < dens); list.length = 0; list.push(...keep); }
+      else if (dens > 1) {
+        const extra = Math.round((Math.max(list.length, 2)) * (dens - 1));
+        for (let i = 0; i < extra; i++) {
+          const x = cx * 16 + Math.floor(rnd() * 16), z = cz * 16 + Math.floor(rnd() * 16), c = this.column(x, z), r2 = rnd();
+          if (c.h <= SEA || c.biome === BIOME.DESERT || c.biome === BIOME.OCEAN || c.biome === BIOME.BEACH) continue;
+          list.push({ x, y: c.h + 1, z, type: 'oak', h: r2 });
+        }
+      }
+      if (T.types || T.bare) {
+        const kinds = Object.entries(T.types || {});
+        for (const t of list) {
+          if (t.type === 'mangrove') continue;
+          let r = rnd();
+          for (const [k, share] of kinds) { if (r < share) { t.type = k; break; } r -= share; }
+          if (T.bare && rnd() < T.bare) t.bare = true;
+        }
+      }
+    } catch (e) { console.warn('campaign trees', e); }
+    return list;
+  };
+}
+// (alpha 8) ravines: C.ravines [{ name, pts, w, depth, floor: 'water'|'lava'|null }]: steep-walled clefts in the land,
+// cut after everything else (a road crosses on a bridge; the story's own bridges span them)
+function campRavinesOf(gen) {
+  const C = campGenDef(); if (!C || !C.ravines || !C.ravines.length) return null;
+  if (gen._ravines && gen._ravinesFor === C.id + '#' + (C.geoEdition || 1)) return gen._ravines;
+  const segs = [];
+  for (const R of C.ravines) for (let i = 0; i < R.pts.length - 1; i++) segs.push({ a: R.pts[i], b: R.pts[i + 1], w: R.w || 6, depth: R.depth || 18, floor: R.floor || null,
+    x0: Math.min(R.pts[i][0], R.pts[i + 1][0]) - (R.w || 6) - 4, x1: Math.max(R.pts[i][0], R.pts[i + 1][0]) + (R.w || 6) + 4, z0: Math.min(R.pts[i][1], R.pts[i + 1][1]) - (R.w || 6) - 4, z1: Math.max(R.pts[i][1], R.pts[i + 1][1]) + (R.w || 6) + 4 });
+  gen._ravines = segs; gen._ravinesFor = C.id + '#' + (C.geoEdition || 1);
+  return segs;
+}
+function campRavineAt(gen, x, z) {
+  const S = campRavinesOf(gen); if (!S) return null;
+  let best = null;
+  for (const s of S) {
+    if (x < s.x0 || x > s.x1 || z < s.z0 || z > s.z1) continue;
+    const vx = s.b[0] - s.a[0], vz = s.b[1] - s.a[1], L2 = vx * vx + vz * vz || 1, t = Math.max(0, Math.min(1, ((x - s.a[0]) * vx + (z - s.a[1]) * vz) / L2));
+    const wob = Math.sin((s.a[0] + vx * t) * 0.09) * 1.6 + Math.sin((s.a[1] + vz * t) * 0.11) * 1.2;
+    const d = Math.hypot(x - (s.a[0] + vx * t + wob), z - (s.a[1] + vz * t));
+    // narrower at its ends
+    const end = Math.min(t, 1 - t) * Math.sqrt(L2), w = s.w * Math.min(1, 0.35 + end / 18);
+    if (d < w && (!best || d / w < best.k)) best = { k: d / w, s, w };
+  }
+  return best;
+}
+{
+  const baseCol = WorldGen.prototype.column;
+  WorldGen.prototype.column = function (x, z) {
+    const c = baseCol.call(this, x, z);
+    if (this.dim !== 0) return c;
+    const R = campRavineAt(this, x, z); if (!R) return c;
+    // sheer walls, a rubble slope at the very bottom
+    const k = R.k, floorH = Math.max(6, c.h - R.s.depth);
+    const h = k > 0.86 ? Math.round(c.h - (c.h - floorH) * (1 - k) / 0.14 * 0.5) : Math.round(floorH + Math.max(0, k - 0.55) * 4);
+    if (h >= c.h) return c;
+    return Object.assign({}, c, { h, ravine: R.s.floor || 'dry', river: 0 });
+  };
+  const baseGen = WorldGen.prototype.generate;
+  WorldGen.prototype.generate = function (ch) {
+    const r = baseGen.call(this, ch);
+    if (this.dim !== 0) return r;
+    try {
+      const S = campRavinesOf(this); if (!S) return r;
+      const bx = ch.cx * 16, bz = ch.cz * 16;
+      if (!S.some(s => s.x1 >= bx && s.x0 <= bx + 15 && s.z1 >= bz && s.z0 <= bz + 15)) return r;
+      let changed = false;
+      for (let lz = 0; lz < 16; lz++) for (let lx = 0; lx < 16; lx++) {
+        const c = this.column(bx + lx, bz + lz); if (!c.ravine) continue;
+        // the ravine's floor: a stream, a seam of lava, or bare stone and gravel; the walls bare rock
+        for (let y = c.h + 1; y < CH; y++) { const i = cidx(lx, y, lz), id = ch.blocks[i]; if (!id) continue; if (T_LIQUID[id] || (y <= c.h + 48 && (T_SOLID[id] || BLOCKS[id].render === RENDER.CROSS))) { ch.blocks[i] = 0; ch.meta[i] = 0; } }
+        const top = cidx(lx, c.h, lz);
+        if (c.ravine === 'water') { ch.blocks[top] = B.gravel; ch.blocks[cidx(lx, c.h + 1, lz)] = B.water; }
+        else if (c.ravine === 'lava') { ch.blocks[top] = B.magma_block !== undefined ? B.magma_block : B.stone; if (hashFloat(bx + lx, bz + lz, this.seed, 133) < 0.5) ch.blocks[cidx(lx, c.h + 1, lz)] = B.lava; }
+        else ch.blocks[top] = hashFloat(bx + lx, bz + lz, this.seed, 131) < 0.6 ? B.gravel : B.stone;
+        changed = true;
+      }
+      if (changed) ch.recomputeMaxY();
+    } catch (e) { console.warn('campaign ravine', e); }
     return r;
   };
 }
@@ -677,6 +794,30 @@ CAMP_SITE_KINDS.white_tree = (P, S, A) => {
   const { x, y, z, R } = S;
   csClear(P, x, y, z, R, 16, csKey('podzol', 'grass'));
   csTree(P, x, y, z, { log: csKey('stripped_birch_log', 'birch_log'), leaves: csKey('white_wool', 'wool'), h: 13, trunk: 0, roots: 6, crown: 4 });
+};
+
+// (alpha 8) the Heart Tree in the middle of the Verdant Vale: older than the Vale, roots like walls, two crowns of
+// flowering leaves with lights hanging in them, and moss and flowers all about its feet
+CAMP_SITE_KINDS.heart_tree = (P, S, A) => {
+  const { x, y, z, R } = S;
+  csClear(P, x, y, z, R, 40, csKey('moss_block', 'grass'));
+  const log = csKey('oak_log', 'log'), leaves = csKey('flowering_azalea_leaves', csKey('azalea_leaves', 'leaves')), leaves2 = csKey('oak_leaves', 'leaves');
+  csTree(P, x, y, z, { log, leaves, h: 24, trunk: 2, roots: 13, crown: 11 });
+  // the upper crown, and boughs reaching out to it
+  const cy = y + 29;
+  for (let a = 0; a < 6; a++) { const t = a / 6 * TAU + 0.3; for (let k = 2; k <= 8; k++) P.put(x + Math.round(Math.cos(t) * k), y + 20 + Math.floor(k / 2), z + Math.round(Math.sin(t) * k), log); }
+  for (let yy = y + 24; yy < cy; yy++) for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (Math.abs(dx) + Math.abs(dz) <= 1) P.put(x + dx, yy, z + dz, log);
+  for (let dy = -3; dy <= 4; dy++) for (let dz = -8; dz <= 8; dz++) for (let dx = -8; dx <= 8; dx++) {
+    const dd = dx * dx + dz * dz + dy * dy * 2.4; if (dd > 64 || P.h(x + dx, cy + dy, z + dz) < 0.1) continue;
+    if (!P.get || !P.get(x + dx, cy + dy, z + dz)) P.put(x + dx, cy + dy, z + dz, (dx + dz + dy) % 3 ? leaves : leaves2);
+  }
+  // lights in the leaves, vines hanging
+  const glow = csKey('shroomlight', csKey('glowstone', 'torch'));
+  for (let k = 0; k < 18; k++) { const a = P.h(k, 21, 5) * TAU, r = 3 + P.h(k, 22, 5) * 7, yy = (k % 2 ? y + 22 : cy) - 1 + Math.floor(P.h(k, 23, 5) * 3); P.put(x + Math.round(Math.cos(a) * r), yy, z + Math.round(Math.sin(a) * r), glow); }
+  const vine = csHas('cave_vines') ? 'cave_vines' : csKey('vine', null);
+  if (vine) for (let k = 0; k < 22; k++) { const a = P.h(k, 31, 5) * TAU, r = 6 + P.h(k, 32, 5) * 5, gx = x + Math.round(Math.cos(a) * r), gz = z + Math.round(Math.sin(a) * r), len = 2 + Math.floor(P.h(k, 33, 5) * 5); for (let j = 1; j <= len; j++) P.put(gx, y + 21 - j, gz, vine); }
+  // flowers and ferns among the roots
+  for (let k = 0; k < 40; k++) { const a = P.h(k, 41, 5) * TAU, r = 4 + P.h(k, 42, 5) * (R - 4), gx = x + Math.round(Math.cos(a) * r), gz = z + Math.round(Math.sin(a) * r); P.put(gx, P.ground(gx, gz) + 1, gz, P.pick(['fern', 'azure_bluet', 'cornflower', 'allium', 'lily_of_the_valley', 'oxeye_daisy'].filter(csHas), gx, k, gz) || 'fern'); }
 };
 
 // ---- a controller everywhere the story puts something on screen (alpha 2) ---------------------------------------------

@@ -96,7 +96,33 @@ const CAMP_ICONS = [];
 }
 const C_ART_OF = {};
 
-function campOfMeta(meta) { return meta && meta.campaign ? CAMPAIGNS[meta.campaign] || null : null; }
+// (alpha 8) a campaign's geography comes in editions: a world keeps the one it was made with (meta.camp.geo), so a world
+// begun before the land was redrawn goes on generating the land it already has. In the data: a land, river, place,
+// town or person with geo: N exists from edition N on, until: N only before it, and edN: { ... } overrides its fields
+// from edition N on (at, style, size...). Edition 1 is the land as it was.
+function campOfMeta(meta) {
+  const C = meta && meta.campaign ? CAMPAIGNS[meta.campaign] || null : null;
+  if (!C || !C.geoLatest) return C;
+  return campEdition(C, Math.max(1, Math.min(C.geoLatest, (meta.camp && meta.camp.geo) || 1)));
+}
+const CAMP_EDITIONS = new Map();
+function campEdition(C, ed) {
+  const key = C.id + '#' + ed;
+  const hit = CAMP_EDITIONS.get(key); if (hit && hit._src === C) return hit;
+  const inEd = (o) => !(o && ((o.geo && o.geo > ed) || (o.until && ed >= o.until)));
+  const over = (o) => { let r = o; if (o && typeof o === 'object') for (let e = 2; e <= ed; e++) if (o['ed' + e]) r = Object.assign({}, r, o['ed' + e]); return r; };
+  const pick = (obj) => { const out = {}; for (const [k, v] of Object.entries(obj || {})) if (inEd(v)) out[k] = over(v); return out; };
+  const D = Object.assign({}, C, { towns: pick(C.towns), places: pick(C.places), npcs: pick(C.npcs), lands: (C.lands || []).filter(inEd).map(over), rivers: (C.rivers || []).filter(inEd).map(over), ravines: (C.ravines || []).filter(inEd).map(over), geoEdition: ed, _src: C });
+  CAMP_EDITIONS.set(key, D);
+  return D;
+}
+// a world made now is made with the newest edition
+function campGeoStamp(meta) {
+  if (!meta || !meta.campaign) return;
+  const C = CAMPAIGNS[meta.campaign]; if (!C || !C.geoLatest) return;
+  campState({ meta });
+  if (!meta.camp.geo) meta.camp.geo = C.geoLatest;
+}
 function campDef(g) { return campOfMeta(g && g.meta); }
 function campState(g) {
   const M = g.meta; if (!M) return null;
@@ -128,7 +154,7 @@ function campSeen(g, ent) {
   }
   return false;
 }
-function campGenDef() { return typeof VILLAGE_CTX !== 'undefined' && VILLAGE_CTX && VILLAGE_CTX.meta ? campOfMeta(VILLAGE_CTX.meta) : (CAMP_RT.genCampaign ? CAMPAIGNS[CAMP_RT.genCampaign] : null); }
+function campGenDef() { return typeof VILLAGE_CTX !== 'undefined' && VILLAGE_CTX && VILLAGE_CTX.meta ? campOfMeta(VILLAGE_CTX.meta) : (CAMP_RT.genCampaign ? campOfMeta({ campaign: CAMP_RT.genCampaign, camp: { geo: CAMP_RT.genGeo || 1 } }) : null); }
 
 // ---- where things are -----------------------------------------------------------------------------------------
 // positions in the data are [x, z] blocks from the world's middle (where the story starts)
@@ -500,7 +526,9 @@ WorldGen.prototype.campSites = function () {
   for (const [id, P] of Object.entries(C.places)) {
     if (P.kind === 'dungeon') continue;
     const [x, z] = P.at, R = P.size || (P.kind === 'tower' || P.kind === 'manor' ? 9 : P.kind === 'camp' ? 8 : 7);
-    const h = this.column(x, z).h;
+    let h = this.column(x, z).h;
+    // (alpha 8) a bridge stands at the height of its banks, not of what it spans
+    if (P.kind === 'bridge' && (C.geoEdition || 1) >= 2) { const L = P.length || 14, ax = P.dir === 1 || P.dir === 3 ? 0 : 1, az = 1 - ax; h = Math.max(this.column(x + ax * (L + 1), z + az * (L + 1)).h, this.column(x - ax * (L + 1), z - az * (L + 1)).h); }
     out.push({ k: CAMP_SITE.idx, kind: 'camp_site', site: P.kind, place: id, id: 'cs_' + id, name: P.name, x, z, y: Math.max(h, SEA + 1), R, x0: x - R - 3, x1: x + R + 3, z0: z - R - 3, z1: z + R + 3, seed: hash32(x, z, 777, this.seed), boss: null, P });
   }
   this._campSitesFor = C.id;

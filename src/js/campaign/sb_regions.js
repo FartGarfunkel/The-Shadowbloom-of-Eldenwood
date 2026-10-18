@@ -211,7 +211,7 @@ Object.assign(SB.quests, {
   sq_stinger: { title: 'The Scourgestinger', order: 47, summary: 'A scorpion the size of a cart, with black blooms in its tracks.',
     stages: { hunt: { goal: "Slay the Scourgestinger on its dune, south-west of Redrock Haven", obj: { clear: 'stinger_nest' }, at: 'stinger_nest', next: 'back' }, back: { goal: 'Tell Warden Kesh', obj: { flag: '_never' }, at: 'kesh' } },
     reward: { xp: 3000, gold: 90 } },
-  sq_duskwood: { title: 'The Thorn Queen', order: 48, summary: 'In Duskwood, south of Stonebridge, the fey have turned, and their glamours spread the blight.',
+  sq_duskwood: { title: 'The Thorn Queen', order: 48, summary: 'In Duskwood, south-east of Stonebridge, the fey have turned, and their glamours spread the blight.',
     stages: { glade: { goal: 'Cleanse the Duskwood Glade', obj: { clear: 'duskwood_glade' }, at: 'duskwood_glade' } },
     reward: { xp: 2300, gold: 60 } },
 });

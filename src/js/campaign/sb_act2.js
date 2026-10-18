@@ -777,7 +777,7 @@ Object.assign(SB.quests, {
     reward: { xp: 600, gold: 150 }, onDone: [{ milestone: 7, why: "The Verdant Vale's Heart" }, { quest: 'q7' }] },
   q7: { title: 'The Druidic Circle of Echoes', main: true, order: 7, summary: 'Lyra turned toward the Circle, where the druids once kept the Rootsong.',
     stages: {
-      go: { goal: 'Travel the old rootroad to the Druidic Circle of Echoes, south-east of Stonebridge', obj: { reach: 'echo_circle', r: 26 }, at: 'echo_circle', next: 'stones' },
+      go: { goal: 'Travel the old rootroad to the Druidic Circle of Echoes, east-south-east of Stonebridge where the Vale meets the Shadowfell', obj: { reach: 'echo_circle', r: 26 }, at: 'echo_circle', next: 'stones' },
       stones: { goal: 'Listen to the echo stones', obj: { flag: 'circle_echo' }, at: 'echo_circle', next: 'site' },
       site: { goal: 'Search the remains of Lyra\'s ritual', obj: { flag: 'circle_page4' }, at: 'echo_circle', next: 'fate' },
       fate: { goal: 'A courier, again…', obj: { read: 'circle_echo_letter' }, at: 'echo_circle' },

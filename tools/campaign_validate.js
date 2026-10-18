@@ -137,9 +137,33 @@
     fx(P.onClear, where + ' onClear'); fx(P.onFind, where + ' onFind');
     for (const b of Object.values(P.blocks || {})) if (H.B[b] === undefined) warn(`${where}: palette block "${b}" missing`);
   }
-  // places too close to each other or to towns
-  const allPts = [...Object.entries(C.places).map(([k, P]) => [k, P.at, P.kind === 'dungeon' ? 30 : (P.size || 7) + 3]), ...Object.entries(C.towns).map(([k, T]) => [k, T.at, T.size === 'large' ? 100 : T.size === 'small' ? 52 : 75])];
-  for (let i = 0; i < allPts.length; i++) for (let j = i + 1; j < allPts.length; j++) { const [a, pa, ra] = allPts[i], [b, pb, rb] = allPts[j]; const d = Math.hypot(pa[0] - pb[0], pa[1] - pb[1]); if (d < ra + rb) warn(`overlap: ${a} and ${b} are ${d.toFixed(0)} apart (want ${ra + rb})`); }
+  // (alpha 8) the land, in every edition of the geography: places too close to each other or to towns, places under water
+  // or in a river, towns in a river or under a hill
+  const eds = C.geoLatest || 1;
+  for (let ed = 1; ed <= eds; ed++) {
+    const inEd = (o) => !(o && ((o.geo && o.geo > ed) || (o.until && ed >= o.until)));
+    const over = (o) => { let r = o; for (let e = 2; e <= ed; e++) if (o && o['ed' + e]) r = Object.assign({}, r, o['ed' + e]); return r; };
+    const pick = (obj) => Object.entries(obj || {}).filter(([, v]) => inEd(v)).map(([k, v]) => [k, over(v)]);
+    const places = pick(C.places), towns = pick(C.towns), lands = (C.lands || []).filter(inEd).map(over), rivers = (C.rivers || []).filter(inEd).map(over), ravines = (C.ravines || []).filter(inEd).map(over);
+    const tag = eds > 1 ? `[land ${ed}] ` : '';
+    const allPts = [...places.map(([k, P]) => [k, P.at, P.kind === 'dungeon' ? 30 : (P.size || 7) + 3]), ...towns.map(([k, T]) => [k, T.at, T.size === 'large' ? 100 : T.size === 'small' ? 52 : 75])];
+    for (let i = 0; i < allPts.length; i++) for (let j = i + 1; j < allPts.length; j++) { const [a, pa, ra] = allPts[i], [b, pb, rb] = allPts[j]; const d = Math.hypot(pa[0] - pb[0], pa[1] - pb[1]); if (d < ra + rb) warn(`${tag}overlap: ${a} and ${b} are ${d.toFixed(0)} apart (want ${ra + rb})`); }
+    const segD = (pts, x, z) => { let best = Infinity; for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], vx = b[0] - a[0], vz = b[1] - a[1], L2 = vx * vx + vz * vz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (z - a[1]) * vz) / L2)); best = Math.min(best, Math.hypot(x - a[0] - vx * t, z - a[1] - vz * t)); } return best; };
+    const WET = new Set(['dock', 'drowned_altar']);
+    for (const [k, P] of places) {
+      if (WET.has(P.kind) || P.kind === 'dungeon' || P.shore) continue;   // shore: meant to be by (or in) the water
+      const R = (P.size || 7);
+      for (const l of lands) if (l.kind === 'lake' && !l.to && Math.hypot(P.at[0] - l.at[0], P.at[1] - l.at[1]) < l.r + (l.fade || 30) * 0.8 + R * 0.5) warn(`${tag}${k} stands in a lake (at ${l.at})`);
+      for (const rv of rivers) { const d = segD(rv.pts, P.at[0], P.at[1]); if (d < (rv.w || 6) + R + 2 && P.kind !== 'bridge') warn(`${tag}${k} is ${d.toFixed(0)} from the ${rv.name} (wants ${(rv.w || 6) + R + 2})`); }
+      for (const rv of ravines) { const d = segD(rv.pts, P.at[0], P.at[1]); if (d < (rv.w || 6) + R + 2 && P.kind !== 'bridge') warn(`${tag}${k} is ${d.toFixed(0)} from ${rv.name}`); }
+    }
+    for (const [k, T] of towns) {
+      if (T.shore) continue;
+      const TR = T.size === 'large' ? 72 : T.size === 'small' ? 40 : 58;
+      for (const rv of [...rivers, ...ravines]) { const d = segD(rv.pts, T.at[0], T.at[1]); if (d < TR + (rv.w || 6)) warn(`${tag}town ${k} is ${d.toFixed(0)} from ${rv.name} (its walls want ${TR + (rv.w || 6)})`); }
+      for (const l of lands) if (['hills', 'mountain', 'lake', 'basin', 'marsh'].includes(l.kind) && !l.to && Math.hypot(T.at[0] - l.at[0], T.at[1] - l.at[1]) < l.r + (l.fade || 30) + TR) warn(`${tag}town ${k} is under a ${l.kind} land at ${l.at}`);
+    }
+  }
   // dungeons share a dungeon region? towns share a town region?
   const reg = (at, R) => Math.floor(at[0] / R) + ',' + Math.floor(at[1] / R);
   const dr = {}; for (const [k, P] of Object.entries(C.places)) if (P.kind === 'dungeon') { const r = reg(P.at, 288); if (dr[r]) err(`dungeons ${dr[r]} and ${k} share a dungeon region`); dr[r] = k; }

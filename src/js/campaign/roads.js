@@ -51,13 +51,20 @@ function campBuildRoads(gen, C, net) {
     net.exits[id] = out;
   }
   for (const P of Object.values(C.places)) if (!P.noGround) net.keep.push({ at: P.at, r: (P.size || 8) + 5, soft: true });
+  // where a street's road leaves the town: 16 blocks on, or (alpha 8) on over a river by the walls to the far bank
+  const exitOut = (e) => {
+    let L = 16;
+    if ((C.geoEdition || 1) >= 2) while (L < 52 && base(Math.round(e.end[0] + ROAD_DX[e.dir] * L), Math.round(e.end[1] + ROAD_DZ[e.dir] * L)).h < SEA + 1) L += 4;
+    if (L > 16) L += 4;
+    return [e.end[0] + ROAD_DX[e.dir] * L, e.end[1] + ROAD_DZ[e.dir] * L];
+  };
   // a town's door to the world: out along its street that runs nearest the way you're going
   const exitOf = (id, toward) => {
     const T = C.towns[id], dx = toward[0] - T.at[0], dz = toward[1] - T.at[1], L = Math.hypot(dx, dz) || 1;
     let best = null, bd = -9;
     for (const e of net.exits[id]) { const d = (ROAD_DX[e.dir] * dx + ROAD_DZ[e.dir] * dz) / L; if (d > bd) { bd = d; best = e; } }
     if (!best) return null;
-    return { from: best.end.slice(), out: [best.end[0] + ROAD_DX[best.dir] * 16, best.end[1] + ROAD_DZ[best.dir] * 16], dir: best.dir };
+    return { from: best.end.slice(), out: exitOut(best), dir: best.dir, e: best };
   };
   const pushOutOfLakes = (p) => { for (const l of lakes) { const R = (l.r || 50) + (l.fade || 20) * 0.6 + 6, dx = p[0] - l.at[0], dz = p[1] - l.at[1], d = Math.hypot(dx, dz); if (d < R) { p[0] = l.at[0] + dx / (d || 1) * R; p[1] = l.at[1] + dz / (d || 1) * R; } } return p; };
   // a winding line through a few jittered points, smoothed
@@ -106,8 +113,12 @@ function campBuildRoads(gen, C, net) {
     const A = C.towns[a], Bt = C.towns[b], ea = exitOf(a, Bt.at), eb = exitOf(b, A.at);
     if (!ea || !eb) continue;
     addLine(wind([ea.from, ea.out, eb.out, eb.from], 34), 1.6, 'road', [a, b]);
+    ea.e.used = eb.e.used = true;
     net.signs.push({ at: [ea.out[0] + ROAD_DZ[ea.dir] * 3, ea.out[1] - ROAD_DX[ea.dir] * 3], dir: ea.dir, names: [Bt.name], to: [Bt.at], back: a }, { at: [eb.out[0] + ROAD_DZ[eb.dir] * 3, eb.out[1] - ROAD_DX[eb.dir] * 3], dir: eb.dir, names: [A.name], to: [A.at], back: b });
   }
+  // (alpha 8) every gate's street goes on out a little way as a road, so the trails that start there are reached dry-shod
+  // (over the river on its bridge, at Stonebridge's south gate)
+  if ((C.geoEdition || 1) >= 2) for (const [id] of towns) for (const e of net.exits[id] || []) if (!e.used) addLine([e.end.slice(), exitOut(e)], 1.6, 'road', [id]);
   // the places: a trail to the nearest point on a road, or to the nearest town
   const nearestOnRoads = (p) => {
     let best = null;
@@ -224,9 +235,31 @@ function campPaveChunk(gen, ch) {
     const q = hashFloat(x, z, gen.seed, 411);
     if (h < SEA) {
       // a plank bridge, rails at its edges and log piers every few blocks
-      const y = SEA + 1, edge = R.d > s.hw - 0.6;
+      let y = SEA + 1;
+      const edge = R.d > s.hw - 0.6;
       if (ch.blocks[cidx(lx, y, lz)] && !T_LIQUID[ch.blocks[cidx(lx, y, lz)]] && !clearable(ch.blocks[cidx(lx, y, lz)])) continue;
       const nearT = (s.near || []).some(id => { const T = C.towns[id]; return T && Math.hypot(T.at[0] - x, T.at[1] - z) < campTownR(T) + 90; });
+      // (alpha 8) by a town, a road crosses the river on an arched stone bridge (Thalara's Bridge at Stonebridge)
+      const X = nearT && s.kind === 'road' && (C.geoEdition || 1) >= 2 ? campRoadCrossing(gen, s, R.t) : null;
+      if (X) {
+        const rise = Math.min(4, Math.max(1.5, X.len / 7)), hh = Math.round(2 * rise * Math.sin(Math.PI * X.u)), slabTop = hh & 1;
+        y = SEA + 1 + (hh >> 1);
+        const openY = SEA + 1 + Math.round((rise - 0.6) * Math.sqrt(Math.max(0, 1 - (2 * X.u - 1) ** 2)));
+        for (let yy = Math.min(openY, y); yy < y; yy++) { ch.blocks[cidx(lx, yy, lz)] = BRICK; ch.meta[cidx(lx, yy, lz)] = 0; }
+        ch.blocks[cidx(lx, y, lz)] = BRICK; ch.meta[cidx(lx, y, lz)] = 0;
+        for (let yy = y + 1; yy < y + 5; yy++) { const id = ch.blocks[cidx(lx, yy, lz)]; if (id && (T_LIQUID[id] || clearable(id))) { ch.blocks[cidx(lx, yy, lz)] = 0; ch.meta[cidx(lx, yy, lz)] = 0; } }
+        const SLABS = K('stone_brick_slab', 'cobblestone_slab');
+        if (slabTop && !edge && SLABS !== undefined) { ch.blocks[cidx(lx, y + 1, lz)] = SLABS; ch.meta[cidx(lx, y + 1, lz)] = 0; }
+        if (edge) {
+          ch.blocks[cidx(lx, y + 1, lz)] = K('stone_brick_wall', 'cobblestone_wall'); ch.meta[cidx(lx, y + 1, lz)] = 0;
+          if (slabTop) { ch.blocks[cidx(lx, y + 2, lz)] = K('stone_brick_wall', 'cobblestone_wall'); ch.meta[cidx(lx, y + 2, lz)] = 0; }
+          // lamps on the parapet at the middle of the span and at its ends
+          if (Math.abs(X.u - 0.5) < 0.03 || X.u < 0.04 || X.u > 0.96) { const ly = y + 2 + (slabTop ? 1 : 0); if (B.lantern !== undefined) { ch.blocks[cidx(lx, ly, lz)] = B.lantern; ch.meta[cidx(lx, ly, lz)] = 0; } }
+          // the piers stand where the arch springs from the water
+          if (X.u < 0.12 || X.u > 0.88) for (let yy = Math.min(openY, y) - 1; yy > Math.max(1, h); yy--) { ch.blocks[cidx(lx, yy, lz)] = BRICK; ch.meta[cidx(lx, yy, lz)] = 0; }
+        }
+        changed = true; continue;
+      }
       ch.blocks[cidx(lx, y, lz)] = s.kind === 'trail' && !edge ? SLAB : nearT ? BRICK : PLANK; ch.meta[cidx(lx, y, lz)] = 0;
       if (edge && s.kind === 'road') {
         ch.blocks[cidx(lx, y + 1, lz)] = nearT ? K('stone_brick_wall', 'cobblestone_wall') : FENCE; ch.meta[cidx(lx, y + 1, lz)] = 0;
@@ -287,6 +320,22 @@ function campRoadNear(net, x, z) {
     if (!best || d - s.hw < best.d - best.s.hw) best = { d, t, s };
   }
   return best && best.d < best.s.hw + 6 ? best : null;
+}
+// (alpha 8) where a road segment crosses water: the stretches of its line that run over water, and where along one this
+// column is (u from 0 to 1), so a bridge can arch from bank to bank
+function campRoadCrossing(gen, s, t) {
+  if (!s._cross) {
+    const L = Math.hypot(s.b[0] - s.a[0], s.b[1] - s.a[1]) || 1, n = Math.ceil(L), runs = [];
+    let start = -1;
+    for (let i = 0; i <= n; i++) {
+      const tt = i / n, wet = gen.column(Math.floor(s.a[0] + (s.b[0] - s.a[0]) * tt), Math.floor(s.a[1] + (s.b[1] - s.a[1]) * tt)).h < SEA;
+      if (wet && start < 0) start = tt;
+      if ((!wet || i === n) && start >= 0) { runs.push([start - 1 / n, (wet ? tt : (i - 1) / n) + 1 / n]); start = -1; }
+    }
+    s._cross = { runs, L };
+  }
+  for (const [t0, t1] of s._cross.runs) if (t >= t0 && t <= t1 && t1 > t0) return { u: (t - t0) / (t1 - t0), len: (t1 - t0) * s._cross.L };
+  return null;
 }
 // what the map shows: the roads (segments with a, b, kind)
 function campRoadLines(g) { const gen = g && g.world && g.world.gen; const net = gen && g.dim === 0 ? campRoadsOf(gen) : null; return net ? net.segs : []; }

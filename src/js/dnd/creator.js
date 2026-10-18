@@ -408,8 +408,8 @@ Object.assign(LocalPlayer.prototype, {
   };
   const baseEnter = Game.prototype.enterWorld;
   Game.prototype.enterWorld = function (meta, ...rest) {
-    if (meta && this._newDnd) { meta.dnd = true; if (meta.campaign === undefined && this._campaignChoice !== null) meta.campaign = this._campaignChoice || DEFAULT_CAMPAIGN; this._newDnd = false; }
-    if (meta && meta.campaign) CAMP_RT.genCampaign = meta.campaign;
+    if (meta && this._newDnd) { meta.dnd = true; if (meta.campaign === undefined && this._campaignChoice !== null) meta.campaign = this._campaignChoice || DEFAULT_CAMPAIGN; this._newDnd = false; if (meta.campaign && typeof campGeoStamp === 'function') campGeoStamp(meta); }   // (alpha 8) made with the newest land
+    if (meta && meta.campaign) { CAMP_RT.genCampaign = meta.campaign; CAMP_RT.genGeo = (meta.camp && meta.camp.geo) || 1; }
     return baseEnter.call(this, meta, ...rest);
   };
 }
